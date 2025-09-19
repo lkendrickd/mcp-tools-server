@@ -17,7 +17,7 @@ A Go-based Model Context Protocol (MCP) server that provides simple tools for AI
 
 ### Prerequisites
 
-- Go 1.21+ (as specified in `go.mod`)
+- Go 1.24.6+ (as specified in `go.mod`)
 - Make (for using the Makefile commands)
 
 ### Setup
