@@ -10,6 +10,8 @@ A Go-based Model Context Protocol (MCP) server that provides simple tools for AI
 - **Concurrent Requests**: Supports multiple simultaneous tool calls
 - **Comprehensive Testing**: Unit, integration, and contract tests included
 - **Makefile Automation**: Convenient build, test, and run commands
+- **Extensible Architecture**: Easily add new tools by implementing the Tool interface
+- **Tiny Footprint**: A singe 5.8MB compiled binary or a 15MB Docker image
 
 ## Installation
 
@@ -152,14 +154,9 @@ The server implements the Model Context Protocol over stdio and http. It support
 │   ├── config/           # Configuration management
 │   └── server/           # MCP and HTTP server implementations
 ├── pkg/tools/            # Public library code (UUID generation, etc.)
-├── api/                  # API and protocol specifications
 ├── configs/              # Configuration files and templates
 ├── build/                # Build tools and artifacts
 ├── docs/                 # Project documentation
-├── test/                 # Additional external tests
-│   ├── unit/             # Unit tests
-│   ├── integration/      # Integration tests
-│   └── contract/         # Contract tests
 ├── go.mod                # Go module definition
 ├── go.sum                # Go dependencies
 ├── Makefile              # Build automation
@@ -174,8 +171,6 @@ make test
 
 Test coverage includes:
 - Unit tests for individual components
-- Integration tests for server interactions
-- Contract tests for API compliance
 
 ### Building from Source
 
@@ -194,11 +189,12 @@ Configuration is currently hardcoded in `src/config/config.go`. For production u
 
 ## Contributing
 
-This project was generated using the Spec Kit system. To modify or extend:
-
-1. Update the specification in `specs/`
-2. Run the Spec Kit workflow to regenerate code
-3. Test changes thoroughly
+Contributions and improvements are welcome! Please follow these steps:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -m 'Add some feature'`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Open a pull request
 
 ## License
 
