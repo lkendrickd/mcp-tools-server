@@ -37,7 +37,7 @@ GO_FILES := $(shell find . -name '*.go' -not -path "./vendor/*")
 
 .PHONY: all run run-http test clean lint wire version help coverage
 
-all: build
+all: help
 
 # Build the application if source files have changed
 build: $(BINARY_PATH)

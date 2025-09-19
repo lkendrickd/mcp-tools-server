@@ -15,8 +15,9 @@ func TestNewServer(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	cfg := config.NewServerConfig()
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
-	httpServer := NewHTTPServer(mcpServer, cfg.HTTPPort, logger)
+	toolService, _ := NewToolService(registry, logger)
+	mcpServer := NewMCPServer(toolService, logger)
+	httpServer := NewHTTPServer(toolService, cfg.HTTPPort, logger)
 
 	server := NewServer(cfg, mcpServer, httpServer)
 
@@ -40,10 +41,10 @@ func TestNewServer(t *testing.T) {
 func TestHTTPServer_StartStop(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
+	toolService, _ := NewToolService(registry, logger)
 
 	// Use a different port to avoid conflicts
-	httpServer := NewHTTPServer(mcpServer, 0, logger) // Port 0 lets OS choose
+	httpServer := NewHTTPServer(toolService, 0, logger) // Port 0 lets OS choose
 
 	// Test Start in a goroutine since it blocks
 	errChan := make(chan error, 1)
@@ -82,8 +83,9 @@ func TestServer_shutdown(t *testing.T) {
 		ShutdownTimeout: 5,
 	}
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
-	httpServer := NewHTTPServer(mcpServer, cfg.HTTPPort, logger)
+	toolService, _ := NewToolService(registry, logger)
+	mcpServer := NewMCPServer(toolService, logger)
+	httpServer := NewHTTPServer(toolService, cfg.HTTPPort, logger)
 
 	server := NewServer(cfg, mcpServer, httpServer)
 
@@ -104,8 +106,9 @@ func TestServer_shutdown_LocalMode(t *testing.T) {
 		ShutdownTimeout: 5,
 	}
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
-	httpServer := NewHTTPServer(mcpServer, cfg.HTTPPort, logger)
+	toolService, _ := NewToolService(registry, logger)
+	mcpServer := NewMCPServer(toolService, logger)
+	httpServer := NewHTTPServer(toolService, cfg.HTTPPort, logger)
 
 	server := NewServer(cfg, mcpServer, httpServer)
 

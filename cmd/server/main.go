@@ -45,18 +45,21 @@ func main() {
 
 	cfg := config.NewServerConfig()
 	registry := tools.NewToolRegistry()
+
+	toolService, err := server.NewToolService(registry, logger)
+	if err != nil {
+		logger.Error("Failed to create tool service", "error", err)
+		os.Exit(1)
+	}
+
 	var mcpServer *server.MCPServer
 	var httpServer *server.HTTPServer
 
 	if *enableMCP {
-		mcpServer = server.NewMCPServer(registry, logger)
+		mcpServer = server.NewMCPServer(toolService, logger)
 	}
 	if *enableHTTP {
-		//  Passing an mcp server to HTTP server for tool access
-		if mcpServer == nil {
-			mcpServer = server.NewMCPServer(registry, logger)
-		}
-		httpServer = server.NewHTTPServer(mcpServer, cfg.HTTPPort, logger)
+		httpServer = server.NewHTTPServer(toolService, cfg.HTTPPort, logger)
 	}
 
 	ctx := context.Background()
