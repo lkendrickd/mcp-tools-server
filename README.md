@@ -135,7 +135,51 @@ curl http://localhost:8080/api/list
 - `200 OK`: Success
 - `405 Method Not Allowed`: Only GET requests are allowed
 
-## MCP Protocol
+#### GET /health
+
+**Response:**
+```json
+{
+  "status": "healthy"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Server is healthy
+- `500 Internal Server Error`: Server is unhealthy
+
+#### GET /
+Returns server information including version and build time.
+**Response:**
+```json
+{
+  "buildTime": "2025-09-19T23:26:33Z",
+  "gitCommit": "059b144",
+  "message": "Welcome to Go MCP Tools Server!",
+  "service": "MCP Tools Server",
+  "version": "1.0.2"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `500 Internal Server Error`: Unable to retrieve version info
+
+#### GET /metrics
+Exposes Prometheus metrics for monitoring.
+**Request:**
+```bash
+curl http://localhost:8080/api/metrics
+``` 
+
+**Response:**
+Prometheus-formatted metrics data.
+**Status Codes:**
+- `200 OK`: Success
+- `500 Internal Server Error`: Unable to retrieve metrics
+
+
+## MCP Protocol`
 
 ### Available Tools
 
