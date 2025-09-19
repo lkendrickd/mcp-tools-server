@@ -1,0 +1,216 @@
+# MCP Tools Server
+
+A Go-based Model Context Protocol (MCP) server that provides simple tools for AI assistants.
+
+## Features
+
+- **UUID Generation Tool**: Generate random UUID v4 strings via MCP protocol
+- **Dual Protocol Support**: Works with MCP (stdio) and HTTP REST API
+- **Graceful Shutdown**: Handles system signals properly for clean termination
+- **Concurrent Requests**: Supports multiple simultaneous tool calls
+- **Comprehensive Testing**: Unit, integration, and contract tests included
+- **Makefile Automation**: Convenient build, test, and run commands
+
+## Installation
+
+### Prerequisites
+
+- Go 1.21+ (as specified in `go.mod`)
+- Make (for using the Makefile commands)
+
+### Setup
+
+```bash
+git clone <repository-url>
+cd mcp-tools-server
+go mod tidy
+make build
+```
+
+## Usage
+
+### Using Makefile Commands
+
+The project includes a `Makefile` for common operations:
+
+```bash
+make build      # Build the application
+make run        # Run the combined MCP and HTTP server
+make run-http   # Run HTTP-only server for testing
+make test       # Run all tests
+make clean      # Remove build artifacts
+make lint       # Run Go linter (requires golangci-lint)
+make wire       # Generate dependency injection files
+make help       # Show all available commands
+```
+
+### As MCP Server
+
+The server communicates via stdio for MCP clients (typically used by AI assistants):
+
+```bash
+make run
+```
+
+### HTTP API
+
+The server exposes a REST API on port 8080. For testing, run in HTTP-only mode:
+
+```bash
+make run-http &
+curl http://localhost:8080/api/uuid
+```
+
+Response:
+```json
+{"uuid": "550e8400-e29b-41d4-a716-446655440000"}
+```
+
+## API Documentation
+
+### Endpoints
+
+#### GET /api/uuid
+
+Generates and returns a random UUID v4 string.
+
+**Request:**
+```bash
+curl http://localhost:8080/api/uuid
+```
+
+**Response:**
+```json
+{
+  "uuid": "string"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `405 Method Not Allowed`: Only GET requests are allowed
+- `500 Internal Server Error`: UUID generation failed
+
+#### GET /api/list
+
+Returns a JSON object mapping tool names to their descriptions.
+
+**Request:**
+```bash
+curl http://localhost:8080/api/list
+```
+
+**Response:**
+```json
+{
+  "generate_uuid": "Generates a random UUID v4 string"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `405 Method Not Allowed`: Only GET requests are allowed
+
+## MCP Protocol
+
+### Available Tools
+
+#### generate_uuid
+
+Generates a random UUID v4 string.
+
+**Input Schema:**
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+**Output:**
+```json
+{
+  "uuid": "uuid-string"
+}
+```
+
+### MCP Communication
+
+The server implements the Model Context Protocol over stdio and http. It supports:
+- `initialize`: Server initialization
+- `tools/list`: List available tools
+- `tools/call`: Execute tool calls
+
+## Development
+
+
+### Project Structure
+
+```
+├── cmd/server/           # Application entry point (main.go)
+├── internal/             # Private application code
+│   ├── config/           # Configuration management
+│   └── server/           # MCP and HTTP server implementations
+├── pkg/tools/            # Public library code (UUID generation, etc.)
+├── api/                  # API and protocol specifications
+├── configs/              # Configuration files and templates
+├── build/                # Build tools and artifacts
+├── docs/                 # Project documentation
+├── test/                 # Additional external tests
+│   ├── unit/             # Unit tests
+│   ├── integration/      # Integration tests
+│   └── contract/         # Contract tests
+├── go.mod                # Go module definition
+├── go.sum                # Go dependencies
+├── Makefile              # Build automation
+└── README.md             # This file
+```
+
+### Running Tests
+
+```bash
+make test
+```
+
+Test coverage includes:
+- Unit tests for individual components
+- Integration tests for server interactions
+- Contract tests for API compliance
+
+### Building from Source
+
+```bash
+make build
+```
+
+This creates a `server` binary in the project root.
+
+## Configuration
+
+Configuration is currently hardcoded in `src/config/config.go`. For production use, consider making these configurable via environment variables:
+
+- `HTTP_PORT`: HTTP server port (default: 8080)
+- `SHUTDOWN_TIMEOUT`: Graceful shutdown timeout in seconds (default: 30)
+
+## Contributing
+
+This project was generated using the Spec Kit system. To modify or extend:
+
+1. Update the specification in `specs/`
+2. Run the Spec Kit workflow to regenerate code
+3. Test changes thoroughly
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Adding New Tools
+
+To add a new tool to the MCP Tools Server:
+
+1. **Create tool implementation** in `pkg/tools/` - Implement the `Tool` interface with `Name()`, `Description()`, and `Execute()` methods
+2. **Register tool builder** in `pkg/tools/tool.go` - Add to `registerBuiltinTools()` method with appropriate configuration handling
+3. **Add HTTP route (optional)** in `internal/server/http_server.go` - Add endpoint in `NewHTTPServer()` if HTTP access is desired
+4. **Test the tool** - Use MCP clients or HTTP API to verify functionality
+
+See `DEVELOPER_GUIDE.md` for detailed implementation examples.
