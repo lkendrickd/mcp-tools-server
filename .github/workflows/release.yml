@@ -35,9 +35,11 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for tags
       
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: '1.24'  # Updated to match Dockerfile version
         
@@ -126,13 +128,10 @@ jobs:
         echo "GIT_COMMIT=$GIT_COMMIT" >> $GITHUB_OUTPUT
         
     - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.version.outputs.TAG_NAME }}
-        release_name: MCP Tools Server ${{ steps.version.outputs.VERSION }}
+        name: MCP Tools Server ${{ steps.version.outputs.VERSION }}
         body: |
           # MCP Tools Server v${{ steps.version.outputs.VERSION }}
           
@@ -173,28 +172,12 @@ jobs:
           - **Build Time:** ${{ steps.build_info.outputs.BUILD_TIME }}
           - **Git Commit:** ${{ steps.build_info.outputs.GIT_COMMIT }}
           - **Trigger:** ${{ github.event_name == 'workflow_dispatch' && 'Manual' || 'Automatic (Tag Push)' }}
+        files: |
+          mcp-tools-server-linux-amd64
+          mcp-tools-server-linux-amd64.sha256
         draft: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.draft == 'true' || false }}
         prerelease: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == 'true' || false }}
-        
-    - name: Upload Linux Binary
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./mcp-tools-server-linux-amd64
-        asset_name: mcp-tools-server-linux-amd64
-        asset_content_type: application/octet-stream
-        
-    - name: Upload Checksum
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./mcp-tools-server-linux-amd64.sha256
-        asset_name: mcp-tools-server-linux-amd64.sha256
-        asset_content_type: text/plain
+        fail_on_unmatched_files: true
         
     - name: Release Summary
       run: |
@@ -205,5 +188,3 @@ jobs:
         echo "   • Trigger: ${{ github.event_name == 'workflow_dispatch' && 'Manual' || 'Automatic (Tag Push)' }}"
         echo "   • Draft: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.draft || 'false' }}"
         echo "   • Pre-release: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease || 'false' }}"
-        echo ""
-        echo "Release URL: ${{ steps.create_release.outputs.html_url }}"
