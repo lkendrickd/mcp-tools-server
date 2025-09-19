@@ -35,10 +35,9 @@ make build
 
 The project includes a `Makefile` for common operations:
 
+
 ```bash
 make build      # Build the application
-make run        # Run the combined MCP and HTTP server
-make run-http   # Run HTTP-only server for testing
 make test       # Run all tests
 make clean      # Remove build artifacts
 make lint       # Run Go linter (requires golangci-lint)
@@ -46,20 +45,43 @@ make wire       # Generate dependency injection files
 make help       # Show all available commands
 ```
 
+### Running the Server
+
+You can now control which servers to run using command-line flags:
+
+- Run both MCP and HTTP servers (default):
+  ```bash
+  ./build/server
+  ```
+- Run only the HTTP server:
+  ```bash
+  ./build/server --http
+  ```
+- Run only the MCP server:
+  ```bash
+  ./build/server --mcp
+  ```
+- Show version info:
+  ```bash
+  ./build/server --version
+  ```
+
+
 ### As MCP Server
 
 The server communicates via stdio for MCP clients (typically used by AI assistants):
 
 ```bash
-make run
+./build/server --mcp
 ```
+
 
 ### HTTP API
 
 The server exposes a REST API on port 8080. For testing, run in HTTP-only mode:
 
 ```bash
-make run-http &
+./build/server --http &
 curl http://localhost:8080/api/uuid
 ```
 
@@ -182,7 +204,8 @@ This creates a `server` binary in the project root.
 
 ## Configuration
 
-Configuration is currently hardcoded in `src/config/config.go`. For production use, consider making these configurable via environment variables:
+
+Configuration is set in `internal/config/config.go` and can be controlled via environment variables:
 
 - `HTTP_PORT`: HTTP server port (default: 8080)
 - `SHUTDOWN_TIMEOUT`: Graceful shutdown timeout in seconds (default: 30)
@@ -209,4 +232,4 @@ To add a new tool to the MCP Tools Server:
 3. **Add HTTP route (optional)** in `internal/server/http_server.go` - Add endpoint in `NewHTTPServer()` if HTTP access is desired
 4. **Test the tool** - Use MCP clients or HTTP API to verify functionality
 
-See `DEVELOPER_GUIDE.md` for detailed implementation examples.
+See the `DEVELOPER_GUIDE.md` in `docs/` for detailed implementation examples.

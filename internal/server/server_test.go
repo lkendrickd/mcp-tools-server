@@ -80,7 +80,6 @@ func TestServer_shutdown(t *testing.T) {
 	cfg := &config.ServerConfig{
 		HTTPPort:        8080,
 		ShutdownTimeout: 5,
-		IsLocal:         false, // Not local, so HTTP server should be shut down
 	}
 	registry := tools.NewToolRegistry()
 	mcpServer := NewMCPServer(registry, logger)
@@ -103,7 +102,6 @@ func TestServer_shutdown_LocalMode(t *testing.T) {
 	cfg := &config.ServerConfig{
 		HTTPPort:        8080,
 		ShutdownTimeout: 5,
-		IsLocal:         true, // Local mode, HTTP server should not be shut down
 	}
 	registry := tools.NewToolRegistry()
 	mcpServer := NewMCPServer(registry, logger)
@@ -114,9 +112,9 @@ func TestServer_shutdown_LocalMode(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	// Test shutdown in local mode
+	// Test shutdown (local mode removed)
 	err := server.shutdown(ctx)
 	if err != nil {
-		t.Errorf("shutdown failed in local mode: %v", err)
+		t.Errorf("shutdown failed: %v", err)
 	}
 }

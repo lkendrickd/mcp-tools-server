@@ -42,6 +42,7 @@ func NewMCPServer(registry *tools.ToolRegistry, logger *slog.Logger) *MCPServer 
 
 // Start begins the MCP server, reading from stdin and writing to stdout
 func (s *MCPServer) Start(ctx context.Context) error {
+	s.logger.Info("Starting MCP server")
 	decoder := json.NewDecoder(os.Stdin)
 
 	// Wait for initialize request first
@@ -76,6 +77,8 @@ func (s *MCPServer) Start(ctx context.Context) error {
 		s.logger.Error("Failed to send initialize response", "error", err)
 		return fmt.Errorf("failed to send initialize response: %w", err)
 	}
+
+	s.logger.Info("MCP server is up and ready for requests")
 
 	// Main message loop
 	for {

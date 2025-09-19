@@ -56,4 +56,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Run the application in combined MCP and HTTP server mode
 ENTRYPOINT ["./server"]
-CMD ["http-only"]
+CMD []

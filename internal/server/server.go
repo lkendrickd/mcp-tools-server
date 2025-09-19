@@ -37,23 +37,12 @@ func (s *Server) Start(ctx context.Context) error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
+	// Create error channel for MCP server
 	mcpErrChan := make(chan error, 1)
 	go func() {
 		mcpErrChan <- s.mcpServer.Start(ctx)
 	}()
 
-	if s.config.IsLocal {
-		// Local mode: do not start HTTP server
-		select {
-		case <-sigChan:
-			cancel()
-			return nil // Only MCP server, just exit
-		case err := <-mcpErrChan:
-			return fmt.Errorf("MCP server error: %w", err)
-		}
-	}
-
-	// Not local: start HTTP server as well
 	httpErrChan := make(chan error, 1)
 	go func() {
 		httpErrChan <- s.httpServer.Start()
@@ -77,8 +66,8 @@ func (s *Server) shutdown(ctx context.Context) error {
 	shutdownCtx, shutdownCancel := context.WithTimeout(ctx, time.Duration(s.config.ShutdownTimeout)*time.Second)
 	defer shutdownCancel()
 
-	if !s.config.IsLocal {
-		// Stop HTTP server only if not in local mode
+	// Always try to stop HTTP server if present
+	if s.httpServer != nil {
 		if err := s.httpServer.Stop(shutdownCtx); err != nil {
 			return fmt.Errorf("failed to stop HTTP server: %w", err)
 		}
