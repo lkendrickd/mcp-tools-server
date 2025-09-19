@@ -185,8 +185,8 @@ func TestToolRegistry_getEnvironmentConfig(t *testing.T) {
 	// Set a test environment variable
 	testKey := "TEST_TOOL_CONFIG"
 	testValue := "test_value"
-	os.Setenv(testKey, testValue)
-	defer os.Unsetenv(testKey)
+	_ = os.Setenv(testKey, testValue)
+	defer func() { _ = os.Unsetenv(testKey) }()
 
 	config := registry.getEnvironmentConfig()
 

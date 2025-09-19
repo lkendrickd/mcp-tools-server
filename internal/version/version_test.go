@@ -18,7 +18,7 @@ func TestGetVersion(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
-		defer os.RemoveAll(tempDir)
+		defer func() { _ = os.RemoveAll(tempDir) }()
 
 		// Create version file in temp directory
 		versionFile := tempDir + "/version"
@@ -32,7 +32,7 @@ func TestGetVersion(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to get working directory: %v", err)
 		}
-		defer os.Chdir(originalWd)
+		defer func() { _ = os.Chdir(originalWd) }()
 
 		if err := os.Chdir(tempDir); err != nil {
 			t.Fatalf("Failed to change to temp dir: %v", err)
@@ -53,15 +53,15 @@ func TestGetVersion(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
-		defer os.RemoveAll(tempDir)
+		defer func() { _ = os.RemoveAll(tempDir) }()
 
 		originalWd, err := os.Getwd()
 		if err != nil {
 			t.Fatalf("Failed to get working directory: %v", err)
 		}
-		defer os.Chdir(originalWd)
+		defer func() { _ = os.Chdir(originalWd) }()
 
-		os.Chdir(tempDir)
+		_ = os.Chdir(tempDir)
 
 		version := getVersion()
 		if version != "2.0.0-ldflags" {
@@ -75,7 +75,7 @@ func TestGetVersion(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
-		defer os.RemoveAll(tempDir)
+		defer func() { _ = os.RemoveAll(tempDir) }()
 
 		// Create empty version file
 		versionFile := tempDir + "/version"
@@ -90,7 +90,7 @@ func TestGetVersion(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to get working directory: %v", err)
 		}
-		defer os.Chdir(originalWd)
+		defer func() { _ = os.Chdir(originalWd) }()
 
 		if err := os.Chdir(tempDir); err != nil {
 			t.Fatalf("Failed to change to temp dir: %v", err)

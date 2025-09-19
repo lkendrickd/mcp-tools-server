@@ -8,8 +8,8 @@ import (
 func TestNewServerConfig(t *testing.T) {
 	t.Run("uses default values when no env vars set", func(t *testing.T) {
 		// Clear any existing env vars
-		os.Unsetenv("HTTP_PORT")
-		os.Unsetenv("SHUTDOWN_TIMEOUT")
+		_ = os.Unsetenv("HTTP_PORT")
+		_ = os.Unsetenv("SHUTDOWN_TIMEOUT")
 
 		config := NewServerConfig()
 
@@ -23,13 +23,13 @@ func TestNewServerConfig(t *testing.T) {
 
 	t.Run("uses environment variables when set", func(t *testing.T) {
 		// Set environment variables
-		os.Setenv("HTTP_PORT", "9090")
-		os.Setenv("SHUTDOWN_TIMEOUT", "60")
+		_ = os.Setenv("HTTP_PORT", "9090")
+		_ = os.Setenv("SHUTDOWN_TIMEOUT", "60")
 
 		defer func() {
 			// Clean up
-			os.Unsetenv("HTTP_PORT")
-			os.Unsetenv("SHUTDOWN_TIMEOUT")
+			_ = os.Unsetenv("HTTP_PORT")
+			_ = os.Unsetenv("SHUTDOWN_TIMEOUT")
 		}()
 
 		config := NewServerConfig()
@@ -44,13 +44,13 @@ func TestNewServerConfig(t *testing.T) {
 
 	t.Run("uses defaults for invalid environment variables", func(t *testing.T) {
 		// Set invalid environment variables
-		os.Setenv("HTTP_PORT", "invalid")
-		os.Setenv("SHUTDOWN_TIMEOUT", "not_a_number")
+		_ = os.Setenv("HTTP_PORT", "invalid")
+		_ = os.Setenv("SHUTDOWN_TIMEOUT", "not_a_number")
 
 		defer func() {
 			// Clean up
-			os.Unsetenv("HTTP_PORT")
-			os.Unsetenv("SHUTDOWN_TIMEOUT")
+			_ = os.Unsetenv("HTTP_PORT")
+			_ = os.Unsetenv("SHUTDOWN_TIMEOUT")
 		}()
 
 		config := NewServerConfig()
@@ -66,7 +66,7 @@ func TestNewServerConfig(t *testing.T) {
 
 func TestGetEnvInt(t *testing.T) {
 	t.Run("returns default when env var not set", func(t *testing.T) {
-		os.Unsetenv("TEST_INT")
+		_ = os.Unsetenv("TEST_INT")
 		result := getEnvInt("TEST_INT", 42)
 		if result != 42 {
 			t.Errorf("Expected 42, got %d", result)
@@ -74,8 +74,8 @@ func TestGetEnvInt(t *testing.T) {
 	})
 
 	t.Run("returns parsed value when env var is valid int", func(t *testing.T) {
-		os.Setenv("TEST_INT", "100")
-		defer os.Unsetenv("TEST_INT")
+		_ = os.Setenv("TEST_INT", "100")
+		defer func() { _ = os.Unsetenv("TEST_INT") }()
 
 		result := getEnvInt("TEST_INT", 42)
 		if result != 100 {
@@ -84,8 +84,8 @@ func TestGetEnvInt(t *testing.T) {
 	})
 
 	t.Run("returns default when env var is invalid int", func(t *testing.T) {
-		os.Setenv("TEST_INT", "not_a_number")
-		defer os.Unsetenv("TEST_INT")
+		_ = os.Setenv("TEST_INT", "not_a_number")
+		defer func() { _ = os.Unsetenv("TEST_INT") }()
 
 		result := getEnvInt("TEST_INT", 42)
 		if result != 42 {

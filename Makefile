@@ -86,7 +86,11 @@ clean:
 # Run the linter
 lint:
 	@echo "Running linter..."
-	@golangci-lint run
+	@if ! command -v golangci-lint > /dev/null; then \
+		echo "golangci-lint not found, installing..."; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin; \
+	fi
+	@$(shell go env GOPATH)/bin/golangci-lint run
 
 
 # Build Docker image
