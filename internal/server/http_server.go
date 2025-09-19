@@ -8,6 +8,27 @@ import (
 	"net/http"
 
 	"mcp-tools-server/internal/version"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+var (
+	requestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"code", "method"},
+	)
+	requestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "http_request_duration_seconds",
+			Help:    "HTTP request duration in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"code", "method"},
+	)
 )
 
 // HTTPServer handles HTTP API requests
@@ -31,10 +52,22 @@ func NewHTTPServer(toolService *ToolService, port int, logger *slog.Logger) *HTT
 		logger: logger,
 	}
 
+	if err := prometheus.Register(requestsTotal); err != nil {
+		if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+			panic(err)
+		}
+	}
+	if err := prometheus.Register(requestDuration); err != nil {
+		if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+			panic(err)
+		}
+	}
+
 	// Create API subrouter
 	apiMux := http.NewServeMux()
-	apiMux.HandleFunc("/uuid", httpServer.handleUUID)
-	apiMux.HandleFunc("/list", httpServer.handleList)
+	apiMux.HandleFunc("/uuid", httpServer.instrumentHandler("uuid", httpServer.handleUUID))
+	apiMux.HandleFunc("/list", httpServer.instrumentHandler("list", httpServer.handleList))
+	apiMux.Handle("/metrics", promhttp.Handler())
 
 	// Mount API subrouter under /api/
 	mux.Handle("/api/", http.StripPrefix("/api", apiMux))
@@ -44,6 +77,17 @@ func NewHTTPServer(toolService *ToolService, port int, logger *slog.Logger) *HTT
 	mux.HandleFunc("/", httpServer.handleIndex)
 
 	return httpServer
+}
+
+// instrumentHandler wraps a handler with Prometheus metrics instrumentation
+func (s *HTTPServer) instrumentHandler(endpoint string, handler http.HandlerFunc) http.HandlerFunc {
+	return promhttp.InstrumentHandlerDuration(
+		requestDuration,
+		promhttp.InstrumentHandlerCounter(
+			requestsTotal,
+			handler,
+		),
+	)
 }
 
 // Start begins the HTTP server
