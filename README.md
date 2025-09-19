@@ -4,7 +4,7 @@ A Go-based Model Context Protocol (MCP) server that provides simple tools for AI
 
 ## Features
 
-- **UUID Generation Tool**: Generate random UUID v4 strings via MCP protocol
+- **UUID Generation Tool**: Used as an Example. Generates random UUID v4 strings via MCP protocol
 - **Dual Protocol Support**: Works with MCP (stdio) and HTTP REST API
 - **Graceful Shutdown**: Handles system signals properly for clean termination
 - **Concurrent Requests**: Supports multiple simultaneous tool calls
