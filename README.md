@@ -41,7 +41,6 @@ make build      # Build the application
 make test       # Run all tests
 make clean      # Remove build artifacts
 make lint       # Run Go linter (requires golangci-lint)
-make wire       # Generate dependency injection files
 make help       # Show all available commands
 ```
 
