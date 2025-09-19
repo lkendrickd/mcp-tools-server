@@ -12,18 +12,18 @@ import (
 
 // HTTPServer handles HTTP API requests
 type HTTPServer struct {
-	mcpServer *MCPServer
-	port      int
-	server    *http.Server
-	logger    *slog.Logger
+	toolService *ToolService
+	port        int
+	server      *http.Server
+	logger      *slog.Logger
 }
 
 // NewHTTPServer creates a new HTTP server
-func NewHTTPServer(mcpServer *MCPServer, port int, logger *slog.Logger) *HTTPServer {
+func NewHTTPServer(toolService *ToolService, port int, logger *slog.Logger) *HTTPServer {
 	mux := http.NewServeMux()
 	httpServer := &HTTPServer{
-		mcpServer: mcpServer,
-		port:      port,
+		toolService: toolService,
+		port:        port,
 		server: &http.Server{
 			Addr:    fmt.Sprintf(":%d", port),
 			Handler: mux,
@@ -66,28 +66,16 @@ func (s *HTTPServer) handleUUID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get UUID generator from MCP server tools
-	uuidGen, exists := s.mcpServer.Tools["generate_uuid"]
-	if !exists {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "UUID generator not available",
-		})
-		return
-	}
-
-	uuid, err := uuidGen.Execute(nil)
+	result, err := s.toolService.ExecuteTool("generate_uuid", nil)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Failed to generate UUID",
-		})
+		s.logger.Error("Failed to execute generate_uuid tool", "error", err)
+		http.Error(w, "Failed to generate UUID", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"uuid": uuid["uuid"].(string),
+		"uuid": result["uuid"].(string),
 	})
 }
 
@@ -99,14 +87,8 @@ func (s *HTTPServer) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create a map of tool names to descriptions
-	tools := make(map[string]string)
-	for _, tool := range s.mcpServer.Tools {
-		tools[tool.Name()] = tool.Description()
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tools)
+	json.NewEncoder(w).Encode(s.toolService.ListTools())
 }
 
 // handleHealth handles GET /health requests

@@ -6,38 +6,20 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-
-	"mcp-tools-server/pkg/tools"
 )
 
 // MCPServer handles MCP protocol communication
 type MCPServer struct {
-	Tools  map[string]tools.Tool
-	logger *slog.Logger
+	toolService *ToolService
+	logger      *slog.Logger
 }
 
 // NewMCPServer creates a new MCP server
-func NewMCPServer(registry *tools.ToolRegistry, logger *slog.Logger) *MCPServer {
-	server := &MCPServer{
-		Tools:  make(map[string]tools.Tool),
-		logger: logger,
+func NewMCPServer(toolService *ToolService, logger *slog.Logger) *MCPServer {
+	return &MCPServer{
+		toolService: toolService,
+		logger:      logger,
 	}
-
-	// Create all available tools from the registry
-	availableTools, err := registry.CreateAllAvailable(logger)
-	if err != nil {
-		logger.Error("Failed to create tools from registry", "error", err)
-		// Continue with empty tools map - server will still work but with no tools
-		return server
-	}
-
-	// Register tools by their actual names
-	for _, tool := range availableTools {
-		server.Tools[tool.Name()] = tool
-	}
-
-	logger.Info("Registered tools", "count", len(server.Tools))
-	return server
 }
 
 // Start begins the MCP server, reading from stdin and writing to stdout
@@ -103,7 +85,7 @@ func (s *MCPServer) Start(ctx context.Context) error {
 // getAvailableTools returns the list of available tools
 func (s *MCPServer) getAvailableTools() []map[string]interface{} {
 	var tools []map[string]interface{}
-	for _, tool := range s.Tools {
+	for _, tool := range s.toolService.GetTools() {
 		schema := map[string]interface{}{
 			"type":       "object",
 			"properties": map[string]interface{}{},
@@ -173,15 +155,10 @@ func (s *MCPServer) handleToolsCall(message map[string]interface{}, id interface
 		return s.sendError(id, -32602, "Missing tool name")
 	}
 
-	tool, exists := s.Tools[name]
-	if !exists {
-		return s.sendError(id, -32601, "Tool not found")
-	}
-
 	// Extract arguments if present
 	arguments, _ := params["arguments"].(map[string]interface{})
 
-	result, err := tool.Execute(arguments)
+	result, err := s.toolService.ExecuteTool(name, arguments)
 	if err != nil {
 		return s.sendError(id, -32000, err.Error())
 	}

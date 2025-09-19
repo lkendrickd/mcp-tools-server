@@ -35,12 +35,15 @@ func (m *MockTool) Execute(args map[string]interface{}) (map[string]interface{},
 	return map[string]interface{}{"result": "mock"}, nil
 }
 
-func setupTestServer() (*HTTPServer, *MCPServer) {
+func setupTestServer() (*HTTPServer, *ToolService) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
-	httpServer := NewHTTPServer(mcpServer, 8080, logger)
-	return httpServer, mcpServer
+	toolService, err := NewToolService(registry, logger)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create tool service: %v", err))
+	}
+	httpServer := NewHTTPServer(toolService, 8080, logger)
+	return httpServer, toolService
 }
 
 func TestHTTPServer_handleIndex(t *testing.T) {
@@ -181,13 +184,13 @@ func TestHTTPServer_handleUUID(t *testing.T) {
 	})
 
 	t.Run("handles missing UUID tool", func(t *testing.T) {
-		// Create server with empty tool registry
+		// Create a tool service with no tools
 		logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
-		mcpServer := &MCPServer{
-			Tools:  make(map[string]tools.Tool), // Empty tools map
+		toolService := &ToolService{
+			tools:  make(map[string]tools.Tool),
 			logger: logger,
 		}
-		httpServer := NewHTTPServer(mcpServer, 8080, logger)
+		httpServer := NewHTTPServer(toolService, 8080, logger)
 
 		req := httptest.NewRequest("GET", "/api/uuid", nil)
 		w := httptest.NewRecorder()
@@ -198,13 +201,10 @@ func TestHTTPServer_handleUUID(t *testing.T) {
 			t.Errorf("Expected status 500, got %d", w.Code)
 		}
 
-		var response map[string]string
-		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-			t.Fatalf("Failed to unmarshal response: %v", err)
-		}
-
-		if response["error"] != "UUID generator not available" {
-			t.Errorf("Expected error 'UUID generator not available', got %s", response["error"])
+		body := strings.TrimSpace(w.Body.String())
+		expectedError := "Failed to generate UUID"
+		if body != expectedError {
+			t.Errorf("Expected error '%s', got '%s'", expectedError, body)
 		}
 	})
 
@@ -219,13 +219,13 @@ func TestHTTPServer_handleUUID(t *testing.T) {
 			},
 		}
 
-		mcpServer := &MCPServer{
-			Tools: map[string]tools.Tool{
+		toolService := &ToolService{
+			tools: map[string]tools.Tool{
 				"generate_uuid": mockTool,
 			},
 			logger: logger,
 		}
-		httpServer := NewHTTPServer(mcpServer, 8080, logger)
+		httpServer := NewHTTPServer(toolService, 8080, logger)
 
 		req := httptest.NewRequest("GET", "/api/uuid", nil)
 		w := httptest.NewRecorder()
@@ -236,13 +236,10 @@ func TestHTTPServer_handleUUID(t *testing.T) {
 			t.Errorf("Expected status 500, got %d", w.Code)
 		}
 
-		var response map[string]string
-		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-			t.Fatalf("Failed to unmarshal response: %v", err)
-		}
-
-		if response["error"] != "Failed to generate UUID" {
-			t.Errorf("Expected error 'Failed to generate UUID', got %s", response["error"])
+		body := strings.TrimSpace(w.Body.String())
+		expectedError := "Failed to generate UUID"
+		if body != expectedError {
+			t.Errorf("Expected error '%s', got '%s'", expectedError, body)
 		}
 	})
 }
@@ -296,16 +293,16 @@ func TestHTTPServer_handleList(t *testing.T) {
 func TestNewHTTPServer(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
+	toolService, _ := NewToolService(registry, logger)
 
-	httpServer := NewHTTPServer(mcpServer, 8080, logger)
+	httpServer := NewHTTPServer(toolService, 8080, logger)
 
 	if httpServer == nil {
 		t.Fatal("NewHTTPServer returned nil")
 	}
 
-	if httpServer.mcpServer != mcpServer {
-		t.Error("HTTP server does not have correct MCP server reference")
+	if httpServer.toolService != toolService {
+		t.Error("HTTP server does not have correct ToolService reference")
 	}
 
 	if httpServer.port != 8080 {

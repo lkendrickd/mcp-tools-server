@@ -12,8 +12,9 @@ import (
 func TestNewMCPServer(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	registry := tools.NewToolRegistry()
+	toolService, _ := NewToolService(registry, logger)
 
-	mcpServer := NewMCPServer(registry, logger)
+	mcpServer := NewMCPServer(toolService, logger)
 
 	if mcpServer == nil {
 		t.Fatal("NewMCPServer returned nil")
@@ -23,18 +24,8 @@ func TestNewMCPServer(t *testing.T) {
 		t.Error("MCP server does not have correct logger reference")
 	}
 
-	if mcpServer.Tools == nil {
-		t.Error("MCP server Tools map is nil")
-	}
-
-	// Check that tools were loaded
-	if len(mcpServer.Tools) == 0 {
-		t.Error("Expected at least one tool to be loaded")
-	}
-
-	// Check that UUID generator is available
-	if _, exists := mcpServer.Tools["generate_uuid"]; !exists {
-		t.Error("Expected 'generate_uuid' tool to be available")
+	if mcpServer.toolService != toolService {
+		t.Error("MCP server does not have correct ToolService reference")
 	}
 }
 
@@ -42,24 +33,19 @@ func TestNewMCPServer_WithFailingRegistry(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 
 	// Create a registry that will fail to create tools
-	registry := &tools.ToolRegistry{}
+	registry := &tools.ToolRegistry{} // This will fail in NewToolService
 
-	mcpServer := NewMCPServer(registry, logger)
-
-	if mcpServer == nil {
-		t.Fatal("NewMCPServer returned nil")
-	}
-
-	// Should have empty tools map when registry fails
-	if len(mcpServer.Tools) != 0 {
-		t.Errorf("Expected empty tools map when registry fails, got %d tools", len(mcpServer.Tools))
+	_, err := NewToolService(registry, logger)
+	if err == nil {
+		t.Fatal("Expected NewToolService to fail with a bad registry, but it did not")
 	}
 }
 
 func TestMCPServer_getAvailableTools(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
+	toolService, _ := NewToolService(registry, logger)
+	mcpServer := NewMCPServer(toolService, logger)
 
 	availableTools := mcpServer.getAvailableTools()
 
@@ -100,7 +86,8 @@ func TestMCPServer_getAvailableTools(t *testing.T) {
 func TestMCPServer_handleMessage(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
+	toolService, _ := NewToolService(registry, logger)
+	mcpServer := NewMCPServer(toolService, logger)
 
 	t.Run("handles initialized notification", func(t *testing.T) {
 		message := map[string]interface{}{
@@ -136,46 +123,12 @@ func TestMCPServer_handleMessage(t *testing.T) {
 	})
 }
 
-func TestMCPServer_ToolsMap(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
-
-	// Test that tools are properly accessible via the Tools map
-	for name, tool := range mcpServer.Tools {
-		if name == "" {
-			t.Error("Empty tool name in Tools map")
-		}
-
-		if tool == nil {
-			t.Errorf("Nil tool for name '%s'", name)
-		}
-
-		// Test that the tool implements the Tool interface properly
-		if tool.Name() == "" {
-			t.Errorf("Tool '%s' has empty Name()", name)
-		}
-
-		if tool.Description() == "" {
-			t.Errorf("Tool '%s' has empty Description()", name)
-		}
-
-		// Test that Execute method works
-		result, err := tool.Execute(map[string]interface{}{})
-		if err != nil {
-			t.Errorf("Tool '%s' Execute failed: %v", name, err)
-		}
-
-		if result == nil {
-			t.Errorf("Tool '%s' Execute returned nil result", name)
-		}
-	}
-}
 
 func TestMCPServer_sendError(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
+	toolService, _ := NewToolService(registry, logger)
+	mcpServer := NewMCPServer(toolService, logger)
 
 	// Note: This test doesn't actually capture the output since sendError writes to stdout
 	// In a real scenario, you might want to mock os.Stdout or use dependency injection
@@ -188,7 +141,8 @@ func TestMCPServer_sendError(t *testing.T) {
 func TestMCPServer_handleToolsList(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
+	toolService, _ := NewToolService(registry, logger)
+	mcpServer := NewMCPServer(toolService, logger)
 
 	// Note: This test writes to stdout, so we can't easily capture the output
 	// But we can test that it doesn't return an error
@@ -201,7 +155,8 @@ func TestMCPServer_handleToolsList(t *testing.T) {
 func TestMCPServer_handleToolsCall(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
+	toolService, _ := NewToolService(registry, logger)
+	mcpServer := NewMCPServer(toolService, logger)
 
 	t.Run("successful tool call", func(t *testing.T) {
 		message := map[string]interface{}{
@@ -270,12 +225,13 @@ func TestMCPServer_handleToolsCall(t *testing.T) {
 		}
 
 		// Create MCP server with the failing tool
-		mcpServer := &MCPServer{
-			Tools: map[string]tools.Tool{
+		failingToolService := &ToolService{
+			tools: map[string]tools.Tool{
 				"failing_tool": mockTool,
 			},
 			logger: logger,
 		}
+		mcpServer := NewMCPServer(failingToolService, logger)
 
 		message := map[string]interface{}{
 			"id": 1,
@@ -295,7 +251,8 @@ func TestMCPServer_handleToolsCall(t *testing.T) {
 func TestMCPServer_handleMessage_MoreCases(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	registry := tools.NewToolRegistry()
-	mcpServer := NewMCPServer(registry, logger)
+	toolService, _ := NewToolService(registry, logger)
+	mcpServer := NewMCPServer(toolService, logger)
 
 	t.Run("handles tools/list request", func(t *testing.T) {
 		message := map[string]interface{}{
