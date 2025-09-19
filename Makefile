@@ -35,7 +35,7 @@ DOCKER_TAG ?= $(VERSION)
 # Source files
 GO_FILES := $(shell find . -name '*.go' -not -path "./vendor/*")
 
-.PHONY: all run run-http test clean lint wire version help
+.PHONY: all run run-http test clean lint wire version help coverage
 
 all: build
 
@@ -48,7 +48,8 @@ $(BINARY_PATH): $(GO_FILES)
 	@mkdir -p $(BUILD_DIR)
 	$(GO_BUILD) $(GO_BUILD_FLAGS) -o $(BINARY_PATH) ./cmd/server
 
-# Run the combined MCP and HTTP server
+
+# Run the combined MCP and HTTP server (default)
 run: build
 	@echo "Starting server from $(BUILD_DIR)..."
 	$(BINARY_PATH)
@@ -56,12 +57,24 @@ run: build
 # Run the HTTP-only server for testing
 run-http: build
 	@echo "Starting HTTP-only server from $(BUILD_DIR)..."
-	$(BINARY_PATH) http-only
+	$(BINARY_PATH) --http
+
+# Run only the MCP server for local usage
+run-mcp: build
+	@echo "Starting MCP-only server from $(BUILD_DIR)..."
+	$(BINARY_PATH) --mcp
 
 # Run all tests
 test:
 	@echo "Running tests..."
 	$(GO_TEST) ./...
+
+# Run tests with coverage and create a coverage report
+coverage:
+	@echo "Running tests with coverage..."
+	$(GO_TEST) -coverprofile=coverage.out ./...
+	@echo "Coverage summary:"
+	@go tool cover -func=coverage.out | tail -n 1
 
 # Clean up build artifacts
 clean:
@@ -75,10 +88,6 @@ lint:
 	@echo "Running linter..."
 	@golangci-lint run
 
-# Generate wire_gen.go
-wire:
-	@echo "Generating wire dependency injection file..."
-	$(GO_GENERATE) ./...
 
 # Build Docker image
 docker-build:
