@@ -12,6 +12,7 @@ A Go-based Model Context Protocol (MCP) server that provides simple tools for AI
 - **Makefile Automation**: Convenient build, test, and run commands
 - **Extensible Architecture**: Easily add new tools by implementing the Tool interface
 - **Tiny Footprint**: A singe 5.8MB compiled binary or a 15MB Docker image
+- **Prometheus Metrics**: Built-in metrics for monitoring server performance
 
 ## Installation
 

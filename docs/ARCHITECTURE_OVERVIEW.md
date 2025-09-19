@@ -1,6 +1,4 @@
-# Developer Guide
-
-## Architecture Overview
+# Architecture Overview
 
 This document provides a detailed explanation of the MCP Tools Server architecture, code flow, and how components interact when a tool is needed.
 
@@ -317,13 +315,11 @@ Structured logging is implemented using `slog`:
 
 ## Future Enhancements
 
-Potential areas for improvement:
+Possible Potential areas for improvement:
 
 - **Authentication/Authorization**: Add API key or OAuth support
 - **Rate Limiting**: Prevent abuse of tool endpoints
-- **Metrics Collection**: Add Prometheus metrics
 - **Configuration File**: Support YAML/JSON config files
 - **Tool Dependencies**: Support tools with external dependencies
 - **Caching**: Add result caching for expensive operations
 - **WebSocket Support**: Real-time tool execution updates</content>
-<parameter name="filePath">/home/dennis/go/src/github.com/lkendrickd/mcp-tools-server/DEVELOPER_GUIDE.md
