@@ -49,21 +49,29 @@ make help       # Show all available commands
 
 ### Running the Server
 
-You can now control which servers to run using command-line flags:
+You can control which servers to run using command-line flags. By default, all three servers (Stdio MCP, HTTP REST, and Streamable HTTP MCP) are enabled.
 
-- Run both MCP and HTTP servers (default):
+- **Run all servers (default):**
   ```bash
   ./build/server
+  # or
+  ./build/server --all
   ```
-- Run only the HTTP server:
+- **Run only the HTTP REST server:**
   ```bash
   ./build/server --http
   ```
-- Run only the MCP server:
+- **Run only the Stdio MCP server:**
   ```bash
   ./build/server --mcp
   ```
-- Show version info:
+- **Run only the Streamable HTTP MCP server:**
+  ```bash
+  ./build/server --streamable
+  ```
+  The streamable server runs on port 8081 by default.
+
+- **Show version info:**
   ```bash
   ./build/server --version
   ```
@@ -77,10 +85,35 @@ The server communicates via stdio for MCP clients (typically used by AI assistan
 ./build/server --mcp
 ```
 
+### Streamable HTTP MCP
+
+The server now supports the official **Streamable HTTP** transport from the MCP specification. This runs on port 8081 by default and provides a single `/mcp` endpoint for all communication.
+
+- **Making a tool call (POST):**
+  ```bash
+  curl -X POST http://localhost:8081/mcp \
+    -H "Content-Type: application/json" \
+    -d '{
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "tools/call",
+      "params": {
+        "name": "generate_uuid"
+      }
+    }'
+  ```
+  The server will return a JSON-RPC response immediately.
+
+- **Listening for server-sent events (GET):**
+  This opens a persistent Server-Sent Events (SSE) stream.
+  ```bash
+  curl -N http://localhost:8081/mcp
+  ```
+  The server can now push messages to the client over this connection.
 
 ### HTTP API
 
-The server exposes a REST API on port 8080. For testing, run in HTTP-only mode:
+The server exposes a simple REST API on port 8080 for basic tool interaction. For testing, run in HTTP-only mode:
 
 ```bash
 ./build/server --http &
@@ -251,10 +284,21 @@ This creates a `server` binary in the project root.
 ## Configuration
 
 
-Configuration is set in `internal/config/config.go` and can be controlled via environment variables:
+Configuration is set in `internal/config/config.go` and can be controlled via environment variables or command-line flags.
 
-- `HTTP_PORT`: HTTP server port (default: 8080)
-- `SHUTDOWN_TIMEOUT`: Graceful shutdown timeout in seconds (default: 30)
+### Environment Variables
+- `HTTP_PORT`: Port for the HTTP REST server (default: `8080`).
+- `STREAMABLE_HTTP_PORT`: Port for the Streamable HTTP MCP server (default: `8081`).
+- `ENABLE_ORIGIN_CHECK`: Set to `true` to enable Origin header validation on the streamable server (default: `false`).
+- `ALLOWED_ORIGINS`: A comma-separated list of hostnames allowed by the origin check (e.g., `localhost,example.com`). Default is `*` (allow all).
+- `SHUTDOWN_TIMEOUT`: Graceful shutdown timeout in seconds (default: `30`).
+
+### Command-Line Flags
+Flags can be used to override environment variable settings.
+- `--http-port <port>`
+- `--streamable-port <port>`
+- `--enable-origin-check`
+- `--allowed-origins <origins>`
 
 ## Contributing
 

@@ -8,17 +8,17 @@ import (
 	"os"
 )
 
-// MCPServer handles MCP protocol communication
+// MCPServer handles MCP protocol communication over stdio.
 type MCPServer struct {
-	toolService *ToolService
-	logger      *slog.Logger
+	logger    *slog.Logger
+	processor *JSONRPCProcessor
 }
 
-// NewMCPServer creates a new MCP server
+// NewMCPServer creates a new MCP server.
 func NewMCPServer(toolService *ToolService, logger *slog.Logger) *MCPServer {
 	return &MCPServer{
-		toolService: toolService,
-		logger:      logger,
+		logger:    logger,
+		processor: NewJSONRPCProcessor(toolService, logger),
 	}
 }
 
@@ -40,20 +40,7 @@ func (s *MCPServer) Start(ctx context.Context) error {
 	}
 
 	id := initMessage["id"]
-	initResponse := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"id":      id,
-		"result": map[string]interface{}{
-			"protocolVersion": "2024-11-05",
-			"capabilities": map[string]interface{}{
-				"tools": s.getAvailableTools(),
-			},
-			"serverInfo": map[string]interface{}{
-				"name":    "mcp-tools-server",
-				"version": "1.0.0",
-			},
-		},
-	}
+	initResponse := s.processor.HandleInitialize(id)
 
 	if err := s.sendResponse(initResponse); err != nil {
 		s.logger.Error("Failed to send initialize response", "error", err)
@@ -82,33 +69,22 @@ func (s *MCPServer) Start(ctx context.Context) error {
 	}
 }
 
-// getAvailableTools returns the list of available tools
-func (s *MCPServer) getAvailableTools() []map[string]interface{} {
-	var tools []map[string]interface{}
-	for _, tool := range s.toolService.GetTools() {
-		schema := map[string]interface{}{
-			"type":       "object",
-			"properties": map[string]interface{}{},
-		}
-
-		tools = append(tools, map[string]interface{}{
-			"name":        tool.Name(),
-			"description": tool.Description(),
-			"inputSchema": schema,
-		})
-	}
-	return tools
-}
-
 // handleMessage processes incoming MCP messages
 func (s *MCPServer) handleMessage(message map[string]interface{}) error {
 	method, ok := message["method"].(string)
 	if !ok {
-		s.logger.Error("Failed to handle message", "error", fmt.Errorf("invalid message: missing method"))
-		return fmt.Errorf("invalid message: missing method")
+		errText := "invalid message: missing method"
+		s.logger.Error("Failed to handle message", "error", errText)
+		// Try to get ID to send a proper error response
+		id, hasId := message["id"]
+		if hasId {
+			return s.sendResponse(s.processor.CreateErrorResponse(id, -32600, "Invalid Request"))
+		}
+		return fmt.Errorf("%s", errText)
 	}
 
 	id, hasId := message["id"]
+	var response *JSONRPCResponse
 
 	switch method {
 	case "initialized":
@@ -116,76 +92,28 @@ func (s *MCPServer) handleMessage(message map[string]interface{}) error {
 		s.logger.Info("Client initialized")
 		return nil
 	case "tools/list":
-		return s.handleToolsList(id)
+		response = s.processor.HandleToolsList(id)
 	case "tools/call":
-		return s.handleToolsCall(message, id)
+		params, ok := message["params"].(map[string]interface{})
+		if !ok {
+			response = s.processor.CreateErrorResponse(id, -32602, "Invalid params")
+		} else {
+			response = s.processor.HandleToolsCall(params, id)
+		}
 	default:
 		if hasId {
-			return s.sendError(id, -32601, "Method not found")
+			response = s.processor.CreateErrorResponse(id, -32601, "Method not found")
+		} else {
+			// Unknown notification, ignore
+			s.logger.Warn("Ignoring unknown notification", "method", method)
+			return nil
 		}
-		// Unknown notification, ignore
-		s.logger.Warn("Ignoring unknown notification", "method", method)
-		return nil
-	}
-}
-
-// handleToolsList responds to tools/list requests
-func (s *MCPServer) handleToolsList(id interface{}) error {
-	response := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"id":      id,
-		"result": map[string]interface{}{
-			"tools": s.getAvailableTools(),
-		},
-	}
-	return s.sendResponse(response)
-}
-
-// handleToolsCall handles tool execution requests
-func (s *MCPServer) handleToolsCall(message map[string]interface{}, id interface{}) error {
-	params, ok := message["params"].(map[string]interface{})
-	if !ok {
-		s.logger.Error("Invalid params in tools/call", "error", fmt.Errorf("invalid params"))
-		return s.sendError(id, -32602, "Invalid params")
 	}
 
-	name, ok := params["name"].(string)
-	if !ok {
-		s.logger.Error("Missing tool name in tools/call", "error", fmt.Errorf("missing tool name"))
-		return s.sendError(id, -32602, "Missing tool name")
-	}
-
-	// Extract arguments if present
-	arguments, _ := params["arguments"].(map[string]interface{})
-
-	result, err := s.toolService.ExecuteTool(name, arguments)
-	if err != nil {
-		return s.sendError(id, -32000, err.Error())
-	}
-
-	response := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"id":      id,
-		"result":  result,
-	}
 	return s.sendResponse(response)
 }
 
 // sendResponse sends a JSON-RPC response
-func (s *MCPServer) sendResponse(response map[string]interface{}) error {
+func (s *MCPServer) sendResponse(response interface{}) error {
 	return json.NewEncoder(os.Stdout).Encode(response)
-}
-
-// sendError sends a JSON-RPC error response
-func (s *MCPServer) sendError(id interface{}, code int, message string) error {
-	s.logger.Error("Sending error response", "id", id, "code", code, "message", message)
-	response := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"id":      id,
-		"error": map[string]interface{}{
-			"code":    code,
-			"message": message,
-		},
-	}
-	return s.sendResponse(response)
 }
