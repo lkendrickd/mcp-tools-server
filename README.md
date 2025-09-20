@@ -1,4 +1,4 @@
-![MCP Tools Server Logo](images/logo.png)
+<img src="images/logo.png" alt="MCP Tools Server Logo" width="50%">
 
 # MCP Tools Server
 
