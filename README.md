@@ -1,3 +1,5 @@
+![MCP Tools Server Logo](images/logo.png)
+
 # MCP Tools Server
 
 A Go-based Model Context Protocol (MCP) server that provides simple tools for AI assistants.
