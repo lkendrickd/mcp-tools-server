@@ -144,9 +144,21 @@ func (s *StreamableHTTPServer) handlePostRequest(w http.ResponseWriter, r *http.
 
 	// For now, always send an immediate JSON response.
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
+	enc := json.NewEncoder(w)
+	if err := enc.Encode(response); err != nil {
 		s.logger.Error("Failed to encode and send response", "error", err)
 		http.Error(w, "Failed to send response", http.StatusInternalServerError)
+		return
+	}
+
+	// Also broadcast the JSON-RPC response to any connected SSE clients so
+	// GET /mcp listeners can receive server-generated messages (streaming).
+	if s.sseManager != nil && response != nil {
+		if b, err := json.Marshal(response); err == nil {
+			s.sseManager.Broadcast(b)
+		} else {
+			s.logger.Warn("Failed to marshal response for SSE broadcast", "error", err)
+		}
 	}
 }
 
