@@ -35,7 +35,7 @@ DOCKER_TAG ?= $(VERSION)
 # Source files
 GO_FILES := $(shell find . -name '*.go' -not -path "./vendor/*")
 
-.PHONY: all run run-http test clean lint wire version help coverage
+.PHONY: all run run-http run-mcp run-streamable test-streamable test-stream test clean lint wire version help coverage
 
 all: help
 
@@ -63,6 +63,21 @@ run-http: build
 run-mcp: build
 	@echo "Starting MCP-only server from $(BUILD_DIR)..."
 	$(BINARY_PATH) --mcp
+
+# Run only the Streamable HTTP MCP server
+run-streamable: build
+	@echo "Starting Streamable HTTP MCP server from $(BUILD_DIR)..."
+	$(BINARY_PATH) --streamable
+
+# Test the streamable HTTP MCP server
+test-streamable: build
+	@echo "Testing Streamable HTTP MCP server..."
+	$(GO_RUN) test_stream_client.go
+
+# Test the streamable HTTP MCP server with shell script
+test-stream: build
+	@echo "Testing Streamable HTTP MCP server with shell script..."
+	./test_stream.sh
 
 # Run all tests
 test:
@@ -137,19 +152,23 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  build        Build the application binary with LDFLAGS"
-	@echo "  run          Run the combined MCP and HTTP server"
-	@echo "  run-http     Run the HTTP-only server"
-	@echo "  test         Run all tests"
-	@echo "  clean        Remove binary, coverage files (.out, .html)"
-	@echo "  lint         Run the Go linter"
-	@echo "  wire         Generate dependency injection files"
-	@echo "  docker-build Build Docker image with LDFLAGS"
-	@echo "  docker-run   Run Docker container"
-	@echo "  docker-clean Clean Docker resources"
-	@echo "  docker-push  Push Docker image to registry"
-	@echo "  version      Show version and build information"
-	@echo "  help         Show this help message"
+	@echo "  build          Build the application binary with LDFLAGS"
+	@echo "  run            Run the combined MCP and HTTP server"
+	@echo "  run-http       Run the HTTP-only server"
+	@echo "  run-mcp        Run the MCP-only server"
+	@echo "  run-streamable Run the Streamable HTTP MCP server"
+	@echo "  test-streamable Test the Streamable HTTP MCP server (Go client)"
+	@echo "  test-stream      Test the Streamable HTTP MCP server (shell script)"
+	@echo "  test           Run all tests"
+	@echo "  clean          Remove binary, coverage files (.out, .html)"
+	@echo "  lint           Run the Go linter"
+	@echo "  wire           Generate dependency injection files"
+	@echo "  docker-build   Build Docker image with LDFLAGS"
+	@echo "  docker-run     Run Docker container"
+	@echo "  docker-clean   Clean Docker resources"
+	@echo "  docker-push    Push Docker image to registry"
+	@echo "  version        Show version and build information"
+	@echo "  help           Show this help message"
 	@echo ""
 	@echo "Binary flags:"
 	@echo "  --version    Show version information from the binary"

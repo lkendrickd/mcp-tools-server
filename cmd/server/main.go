@@ -7,6 +7,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strings"
 
 	"mcp-tools-server/internal/config"
 	"mcp-tools-server/internal/server"
@@ -15,37 +16,66 @@ import (
 )
 
 func main() {
-	// Flags for server modes
+	// --- Flag Definition ---
 	var (
-		showVersion = flag.Bool("version", false, "Show version and exit")
-		enableHTTP  = flag.Bool("http", false, "Enable HTTP server")
-		enableMCP   = flag.Bool("mcp", false, "Enable MCP server")
+		showVersion       = flag.Bool("version", false, "Show version and exit")
+		enableHTTP        = flag.Bool("http", false, "Enable HTTP REST server")
+		enableMCP         = flag.Bool("mcp", false, "Enable stdio MCP server")
+		enableStreamable  = flag.Bool("streamable", false, "Enable Streamable HTTP MCP server")
+		enableAll         = flag.Bool("all", false, "Enable all three server modes")
+		streamablePort    = flag.Int("streamable-port", 0, "Port for Streamable HTTP MCP server (overrides env)")
+		httpPort          = flag.Int("http-port", 0, "Port for HTTP REST server (overrides env)")
+		enableOriginCheck = flag.Bool("enable-origin-check", false, "Enable origin check for streamable server")
+		allowedOriginsRaw = flag.String("allowed-origins", "", "Comma-separated list of allowed origins (overrides env)")
 	)
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Printf("MCP Tools Server v%s\n", version.GetVersion())
-		fmt.Printf("Build Time: %s\n", version.GetBuildTime())
-		fmt.Printf("Git Commit: %s\n", version.GetGitCommit())
 		os.Exit(0)
 	}
 
-	// Default: if neither flag is set, run both
-	if !*enableHTTP && !*enableMCP {
-		*enableHTTP = true
-		*enableMCP = true
+	// --- Server Mode Logic ---
+	runMCP := *enableMCP
+	runHTTP := *enableHTTP
+	runStreamable := *enableStreamable
+
+	if *enableAll {
+		runMCP, runHTTP, runStreamable = true, true, true
+	} else if !runMCP && !runHTTP && !runStreamable {
+		// Default: run all servers if no specific flag is set
+		runMCP, runHTTP, runStreamable = true, true, true
 	}
 
-	logger := slog.New(
-		slog.NewTextHandler(
-			os.Stdout,
-			&slog.HandlerOptions{Level: slog.LevelInfo}),
-	)
+	// --- Configuration Loading ---
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
 
 	cfg := config.NewServerConfig()
-	registry := tools.NewToolRegistry()
+	// Override config with flags if they were provided
+	if *httpPort != 0 {
+		cfg.HTTPPort = *httpPort
+	}
+	if *streamablePort != 0 {
+		cfg.StreamableHTTPPort = *streamablePort
+	}
+	// For bool flags, we need to check if the flag was actually set on the command line
+	// to differentiate it from the default `false` value.
+	isOriginCheckSet := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "enable-origin-check" {
+			isOriginCheckSet = true
+		}
+	})
+	if isOriginCheckSet {
+		cfg.EnableOriginCheck = *enableOriginCheck
+	}
+	if *allowedOriginsRaw != "" {
+		cfg.AllowedOrigins = strings.Split(*allowedOriginsRaw, ",")
+	}
 
+	// --- Service and Server Initialization ---
+	registry := tools.NewToolRegistry()
 	toolService, err := server.NewToolService(registry, logger)
 	if err != nil {
 		logger.Error("Failed to create tool service", "error", err)
@@ -54,34 +84,25 @@ func main() {
 
 	var mcpServer *server.MCPServer
 	var httpServer *server.HTTPServer
+	var streamableHTTPServer *server.StreamableHTTPServer
 
-	if *enableMCP {
+	if runMCP {
 		mcpServer = server.NewMCPServer(toolService, logger)
+		logger.Info("Stdio MCP server enabled")
 	}
-	if *enableHTTP {
+	if runHTTP {
 		httpServer = server.NewHTTPServer(toolService, cfg.HTTPPort, logger)
+		logger.Info("HTTP REST server enabled", "port", cfg.HTTPPort)
+	}
+	if runStreamable {
+		streamableHTTPServer = server.NewStreamableHTTPServer(cfg, toolService, logger)
+		logger.Info("Streamable HTTP MCP server enabled", "port", cfg.StreamableHTTPPort, "origin-check", cfg.EnableOriginCheck)
 	}
 
-	ctx := context.Background()
-
-	// Start servers based on flags
-	switch {
-	case *enableHTTP && *enableMCP:
-		// Both servers: use combined server
-		srv := server.NewServer(cfg, mcpServer, httpServer)
-		if err := srv.Start(ctx); err != nil {
-			log.Fatalf("Server error: %v", err)
-		}
-	case *enableHTTP:
-		logger.Info("Starting HTTP server", "port", cfg.HTTPPort)
-		if err := httpServer.Start(); err != nil {
-			logger.Error("HTTP server error", "error", err)
-			os.Exit(1)
-		}
-	case *enableMCP:
-		if err := mcpServer.Start(ctx); err != nil {
-			logger.Error("MCP server error", "error", err)
-			os.Exit(1)
-		}
+	// --- Server Start ---
+	// The combined server handles the lifecycle of all non-nil servers.
+	srv := server.NewServer(cfg, mcpServer, httpServer, streamableHTTPServer)
+	if err := srv.Start(context.Background()); err != nil {
+		log.Fatalf("Server error: %v", err)
 	}
 }

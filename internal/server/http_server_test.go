@@ -13,28 +13,6 @@ import (
 	"mcp-tools-server/pkg/tools"
 )
 
-// MockTool is a test tool implementation
-type MockTool struct {
-	name        string
-	description string
-	executeFunc func(args map[string]interface{}) (map[string]interface{}, error)
-}
-
-func (m *MockTool) Name() string {
-	return m.name
-}
-
-func (m *MockTool) Description() string {
-	return m.description
-}
-
-func (m *MockTool) Execute(args map[string]interface{}) (map[string]interface{}, error) {
-	if m.executeFunc != nil {
-		return m.executeFunc(args)
-	}
-	return map[string]interface{}{"result": "mock"}, nil
-}
-
 func setupTestServer() (*HTTPServer, *ToolService) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	registry := tools.NewToolRegistry()

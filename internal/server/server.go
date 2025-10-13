@@ -11,67 +11,93 @@ import (
 	"mcp-tools-server/internal/config"
 )
 
-// Server combines MCP and HTTP servers
+// Server combines MCP, HTTP, and Streamable HTTP servers.
 type Server struct {
-	config     *config.ServerConfig
-	mcpServer  *MCPServer
-	httpServer *HTTPServer
+	config               *config.ServerConfig
+	mcpServer            *MCPServer
+	httpServer           *HTTPServer
+	streamableHTTPServer *StreamableHTTPServer
 }
 
-// NewServer creates a new combined server
-func NewServer(cfg *config.ServerConfig, mcpServer *MCPServer, httpServer *HTTPServer) *Server {
+// NewServer creates a new combined server.
+func NewServer(
+	cfg *config.ServerConfig,
+	mcpServer *MCPServer,
+	httpServer *HTTPServer,
+	streamableHTTPServer *StreamableHTTPServer,
+) *Server {
 	return &Server{
-		config:     cfg,
-		mcpServer:  mcpServer,
-		httpServer: httpServer,
+		config:               cfg,
+		mcpServer:            mcpServer,
+		httpServer:           httpServer,
+		streamableHTTPServer: streamableHTTPServer,
 	}
 }
 
-// Start begins both servers and handles graceful shutdown
+// Start begins all configured servers and handles graceful shutdown.
 func (s *Server) Start(ctx context.Context) error {
-	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Set up signal handling
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	// Create error channel for MCP server
-	mcpErrChan := make(chan error, 1)
-	go func() {
-		mcpErrChan <- s.mcpServer.Start(ctx)
-	}()
+	errChan := make(chan error, 3) // One for each potential server
 
-	httpErrChan := make(chan error, 1)
-	go func() {
-		httpErrChan <- s.httpServer.Start()
-	}()
+	if s.mcpServer != nil {
+		go func() {
+			errChan <- s.mcpServer.Start(ctx)
+		}()
+	}
 
-	// Wait for shutdown signal or error
+	if s.httpServer != nil {
+		go func() {
+			errChan <- s.httpServer.Start()
+		}()
+	}
+
+	if s.streamableHTTPServer != nil {
+		go func() {
+			errChan <- s.streamableHTTPServer.Start()
+		}()
+	}
+
+	// Wait for a shutdown signal or a server error.
 	select {
 	case <-sigChan:
 		cancel()
-		return s.shutdown(ctx)
-	case err := <-httpErrChan:
+		return s.shutdown(context.Background()) // Use a new context for shutdown
+	case err := <-errChan:
 		cancel()
-		return fmt.Errorf("HTTP server error: %w", err)
-	case err := <-mcpErrChan:
-		return fmt.Errorf("MCP server error: %w", err)
+		return fmt.Errorf("server error: %w", err)
 	}
 }
 
-// shutdown gracefully stops both servers (if running)
+// shutdown gracefully stops all running servers.
 func (s *Server) shutdown(ctx context.Context) error {
 	shutdownCtx, shutdownCancel := context.WithTimeout(ctx, time.Duration(s.config.ShutdownTimeout)*time.Second)
 	defer shutdownCancel()
 
-	// Always try to stop HTTP server if present
+	var shutdownError error
+
 	if s.httpServer != nil {
 		if err := s.httpServer.Stop(shutdownCtx); err != nil {
-			return fmt.Errorf("failed to stop HTTP server: %w", err)
+			shutdownError = fmt.Errorf("failed to stop HTTP server: %w", err)
 		}
 	}
 
-	return nil
+	if s.streamableHTTPServer != nil {
+		if err := s.streamableHTTPServer.Stop(shutdownCtx); err != nil {
+			if shutdownError != nil {
+				shutdownError = fmt.Errorf("%v; failed to stop Streamable HTTP server: %w", shutdownError, err)
+			} else {
+				shutdownError = fmt.Errorf("failed to stop Streamable HTTP server: %w", err)
+			}
+		}
+	}
+
+	// The MCP server is managed by the context passed to its Start method,
+	// so it doesn't need an explicit stop call here.
+
+	return shutdownError
 }
