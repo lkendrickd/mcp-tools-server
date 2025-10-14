@@ -49,7 +49,16 @@ func (s *ToolService) ExecuteTool(name string, args map[string]interface{}) (map
 		return nil, fmt.Errorf("tool not found: %s", name)
 	}
 
-	return tool.Execute(args)
+	result, err := tool.Execute(args)
+	if err != nil {
+		s.logger.Error("Tool execution failed", "tool", name, "error", err)
+		return nil, err
+	}
+
+	// Log the result for cross-verification
+	s.logger.Info("Tool executed successfully", "tool", name, "result", result)
+
+	return result, nil
 }
 
 // GetTools returns the map of tools

@@ -17,6 +17,7 @@ type Server struct {
 	mcpServer            *MCPServer
 	httpServer           *HTTPServer
 	streamableHTTPServer *StreamableHTTPServer
+	webSocketServer      *WebSocketServer
 }
 
 // NewServer creates a new combined server.
@@ -25,12 +26,14 @@ func NewServer(
 	mcpServer *MCPServer,
 	httpServer *HTTPServer,
 	streamableHTTPServer *StreamableHTTPServer,
+	webSocketServer *WebSocketServer,
 ) *Server {
 	return &Server{
 		config:               cfg,
 		mcpServer:            mcpServer,
 		httpServer:           httpServer,
 		streamableHTTPServer: streamableHTTPServer,
+		webSocketServer:      webSocketServer,
 	}
 }
 
@@ -42,7 +45,7 @@ func (s *Server) Start(ctx context.Context) error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	errChan := make(chan error, 3) // One for each potential server
+	errChan := make(chan error, 4) // One for each potential server
 
 	if s.mcpServer != nil {
 		go func() {
@@ -59,6 +62,12 @@ func (s *Server) Start(ctx context.Context) error {
 	if s.streamableHTTPServer != nil {
 		go func() {
 			errChan <- s.streamableHTTPServer.Start()
+		}()
+	}
+
+	if s.webSocketServer != nil {
+		go func() {
+			errChan <- s.webSocketServer.Start()
 		}()
 	}
 
@@ -92,6 +101,16 @@ func (s *Server) shutdown(ctx context.Context) error {
 				shutdownError = fmt.Errorf("%v; failed to stop Streamable HTTP server: %w", shutdownError, err)
 			} else {
 				shutdownError = fmt.Errorf("failed to stop Streamable HTTP server: %w", err)
+			}
+		}
+	}
+
+	if s.webSocketServer != nil {
+		if err := s.webSocketServer.Stop(shutdownCtx); err != nil {
+			if shutdownError != nil {
+				shutdownError = fmt.Errorf("%v; failed to stop WebSocket server: %w", shutdownError, err)
+			} else {
+				shutdownError = fmt.Errorf("failed to stop WebSocket server: %w", err)
 			}
 		}
 	}

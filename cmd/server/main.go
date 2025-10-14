@@ -22,9 +22,11 @@ func main() {
 		enableHTTP        = flag.Bool("http", false, "Enable HTTP REST server")
 		enableMCP         = flag.Bool("mcp", false, "Enable stdio MCP server")
 		enableStreamable  = flag.Bool("streamable", false, "Enable Streamable HTTP MCP server")
-		enableAll         = flag.Bool("all", false, "Enable all three server modes")
+		enableWebSocket   = flag.Bool("websocket", false, "Enable WebSocket server")
+		enableAll         = flag.Bool("all", false, "Enable all server modes")
 		streamablePort    = flag.Int("streamable-port", 0, "Port for Streamable HTTP MCP server (overrides env)")
 		httpPort          = flag.Int("http-port", 0, "Port for HTTP REST server (overrides env)")
+		webSocketPort     = flag.Int("websocket-port", 0, "Port for WebSocket server (overrides env)")
 		enableOriginCheck = flag.Bool("enable-origin-check", false, "Enable origin check for streamable server")
 		allowedOriginsRaw = flag.String("allowed-origins", "", "Comma-separated list of allowed origins (overrides env)")
 	)
@@ -39,12 +41,13 @@ func main() {
 	runMCP := *enableMCP
 	runHTTP := *enableHTTP
 	runStreamable := *enableStreamable
+	runWebSocket := *enableWebSocket
 
 	if *enableAll {
-		runMCP, runHTTP, runStreamable = true, true, true
-	} else if !runMCP && !runHTTP && !runStreamable {
+		runMCP, runHTTP, runStreamable, runWebSocket = true, true, true, true
+	} else if !runMCP && !runHTTP && !runStreamable && !runWebSocket {
 		// Default: run all servers if no specific flag is set
-		runMCP, runHTTP, runStreamable = true, true, true
+		runMCP, runHTTP, runStreamable, runWebSocket = true, true, true, true
 	}
 
 	// --- Configuration Loading ---
@@ -58,6 +61,9 @@ func main() {
 	}
 	if *streamablePort != 0 {
 		cfg.StreamableHTTPPort = *streamablePort
+	}
+	if *webSocketPort != 0 {
+		cfg.WebSocketPort = *webSocketPort
 	}
 	// For bool flags, we need to check if the flag was actually set on the command line
 	// to differentiate it from the default `false` value.
@@ -85,6 +91,7 @@ func main() {
 	var mcpServer *server.MCPServer
 	var httpServer *server.HTTPServer
 	var streamableHTTPServer *server.StreamableHTTPServer
+	var webSocketServer *server.WebSocketServer
 
 	if runMCP {
 		mcpServer = server.NewMCPServer(toolService, logger)
@@ -98,10 +105,15 @@ func main() {
 		streamableHTTPServer = server.NewStreamableHTTPServer(cfg, toolService, logger)
 		logger.Info("Streamable HTTP MCP server enabled", "port", cfg.StreamableHTTPPort, "origin-check", cfg.EnableOriginCheck)
 	}
+	if runWebSocket {
+		jsonRPCProcessor := server.NewJSONRPCProcessor(toolService, logger)
+		webSocketServer = server.NewWebSocketServer(cfg, jsonRPCProcessor)
+		logger.Info("WebSocket server enabled", "port", cfg.WebSocketPort)
+	}
 
 	// --- Server Start ---
 	// The combined server handles the lifecycle of all non-nil servers.
-	srv := server.NewServer(cfg, mcpServer, httpServer, streamableHTTPServer)
+	srv := server.NewServer(cfg, mcpServer, httpServer, streamableHTTPServer, webSocketServer)
 	if err := srv.Start(context.Background()); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}

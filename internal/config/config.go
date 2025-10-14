@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -8,11 +9,12 @@ import (
 
 // ServerConfig holds the configuration for the MCP tools server
 type ServerConfig struct {
-	HTTPPort             int      // Port for HTTP API server
-	StreamableHTTPPort   int      // Port for Streamable HTTP MCP server
-	ShutdownTimeout      int      // Timeout for graceful shutdown (seconds)
-	EnableOriginCheck    bool     // Whether to enforce origin check for streamable server
-	AllowedOrigins       []string // Comma-separated list of allowed origins
+	HTTPPort           int      // Port for HTTP API server
+	StreamableHTTPPort int      // Port for Streamable HTTP MCP server
+	WebSocketPort      int      // Port for WebSocket server
+	ShutdownTimeout    int      // Timeout for graceful shutdown (seconds)
+	EnableOriginCheck  bool     // Whether to enforce origin check for streamable server
+	AllowedOrigins     []string // Comma-separated list of allowed origins
 }
 
 // getEnvInt reads an int from the environment or returns the default
@@ -50,8 +52,14 @@ func NewServerConfig() *ServerConfig {
 	return &ServerConfig{
 		HTTPPort:           getEnvInt("HTTP_PORT", 8080),
 		StreamableHTTPPort: getEnvInt("STREAMABLE_HTTP_PORT", 8081),
+		WebSocketPort:      getEnvInt("WEBSOCKET_PORT", 8082),
 		ShutdownTimeout:    getEnvInt("SHUTDOWN_TIMEOUT", 30),
 		EnableOriginCheck:  getEnvBool("ENABLE_ORIGIN_CHECK", false),
 		AllowedOrigins:     getEnvStringSlice("ALLOWED_ORIGINS", []string{"*"}),
 	}
+}
+
+// WebSocketAddr returns the address for the WebSocket server
+func (c *ServerConfig) WebSocketAddr() string {
+	return fmt.Sprintf(":%d", c.WebSocketPort)
 }

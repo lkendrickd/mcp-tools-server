@@ -19,7 +19,7 @@ var (
 			Name: "http_requests_total",
 			Help: "Total number of HTTP requests",
 		},
-		[]string{"code", "method"},
+		[]string{"code", "method", "endpoint"},
 	)
 	requestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -27,7 +27,7 @@ var (
 			Help:    "HTTP request duration in seconds",
 			Buckets: prometheus.DefBuckets,
 		},
-		[]string{"code", "method"},
+		[]string{"code", "method", "endpoint"},
 	)
 )
 
@@ -82,9 +82,9 @@ func NewHTTPServer(toolService *ToolService, port int, logger *slog.Logger) *HTT
 // instrumentHandler wraps a handler with Prometheus metrics instrumentation
 func (s *HTTPServer) instrumentHandler(endpoint string, handler http.HandlerFunc) http.HandlerFunc {
 	return promhttp.InstrumentHandlerDuration(
-		requestDuration,
+		requestDuration.MustCurryWith(prometheus.Labels{"endpoint": endpoint}),
 		promhttp.InstrumentHandlerCounter(
-			requestsTotal,
+			requestsTotal.MustCurryWith(prometheus.Labels{"endpoint": endpoint}),
 			handler,
 		),
 	)
