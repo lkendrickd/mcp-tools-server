@@ -18,7 +18,7 @@ func TestNewServer(t *testing.T) {
 	mcpServer := NewMCPServer(toolService, logger)
 	httpServer := NewHTTPServer(toolService, cfg.HTTPPort, logger)
 
-	server := NewServer(cfg, mcpServer, httpServer, nil)
+	server := NewServer(cfg, mcpServer, httpServer, nil, nil)
 
 	if server == nil {
 		t.Fatal("NewServer returned nil")
@@ -48,7 +48,7 @@ func TestServer_shutdown(t *testing.T) {
 	mcpServer := NewMCPServer(toolService, logger)
 	httpServer := NewHTTPServer(toolService, cfg.HTTPPort, logger)
 
-	server := NewServer(cfg, mcpServer, httpServer, nil)
+	server := NewServer(cfg, mcpServer, httpServer, nil, nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()

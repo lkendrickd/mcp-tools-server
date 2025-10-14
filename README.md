@@ -7,7 +7,7 @@ A Go-based Model Context Protocol (MCP) server that provides simple tools for AI
 ## Features
 
 - **UUID Generation Tool**: Used as an Example. Generates random UUID v4 strings via MCP protocol
-- **Dual Protocol Support**: Works with MCP (stdio) and HTTP REST API
+- **Multiple Protocol Support**: Works with MCP (stdio), HTTP REST API, Streamable HTTP, and WebSockets.
 - **Graceful Shutdown**: Handles system signals properly for clean termination
 - **Concurrent Requests**: Supports multiple simultaneous tool calls
 - **Comprehensive Testing**: Unit, integration, and contract tests included
@@ -38,18 +38,20 @@ make build
 
 The project includes a `Makefile` for common operations:
 
-
-```bash
-make build      # Build the application
-make test       # Run all tests
-make clean      # Remove build artifacts
-make lint       # Run Go linter (requires golangci-lint)
-make help       # Show all available commands
-```
+- **`make build`**: Build the application binary.
+- **`make run`** or **`make run-all`**: Run all servers (default).
+- **`make run-http`**: Run only the HTTP REST server.
+- **`make run-mcp`**: Run only the Stdio MCP server.
+- **`make run-streamable`**: Run only the Streamable HTTP server.
+- **`make run-websocket`**: Run only the WebSocket server.
+- **`make test`**: Run all tests.
+- **`make clean`**: Remove build artifacts.
+- **`make lint`**: Run the Go linter.
+- **`make help`**: Show all available commands.
 
 ### Running the Server
 
-You can control which servers to run using command-line flags. By default, all three servers (Stdio MCP, HTTP REST, and Streamable HTTP MCP) are enabled.
+You can control which servers to run using command-line flags. By default, all four servers (Stdio MCP, HTTP REST, Streamable HTTP, and WebSocket) are enabled. You can also use the `make` targets (`make run-http`, `make run-mcp`, etc.) as a convenient shortcut for these commands.
 
 - **Run all servers (default):**
   ```bash
@@ -70,6 +72,12 @@ You can control which servers to run using command-line flags. By default, all t
   ./build/server --streamable
   ```
   The streamable server runs on port 8081 by default.
+
+- **Run only the WebSocket server:**
+  ```bash
+  ./build/server --websocket
+  ```
+  The WebSocket server runs on port 8082 by default.
 
 - **Show version info:**
   ```bash
@@ -289,6 +297,7 @@ Configuration is set in `internal/config/config.go` and can be controlled via en
 ### Environment Variables
 - `HTTP_PORT`: Port for the HTTP REST server (default: `8080`).
 - `STREAMABLE_HTTP_PORT`: Port for the Streamable HTTP MCP server (default: `8081`).
+- `WEBSOCKET_PORT`: Port for the WebSocket server (default: `8082`).
 - `ENABLE_ORIGIN_CHECK`: Set to `true` to enable Origin header validation on the streamable server (default: `false`).
 - `ALLOWED_ORIGINS`: A comma-separated list of hostnames allowed by the origin check (e.g., `localhost,example.com`). Default is `*` (allow all).
 - `SHUTDOWN_TIMEOUT`: Graceful shutdown timeout in seconds (default: `30`).
@@ -297,6 +306,7 @@ Configuration is set in `internal/config/config.go` and can be controlled via en
 Flags can be used to override environment variable settings.
 - `--http-port <port>`
 - `--streamable-port <port>`
+- `--websocket-port <port>`
 - `--enable-origin-check`
 - `--allowed-origins <origins>`
 
@@ -323,3 +333,15 @@ To add a new tool to the MCP Tools Server:
 4. **Test the tool** - Use MCP clients or HTTP API to verify functionality
 
 See the `DEVELOPER_GUIDE.md` in `docs/` for detailed implementation examples.
+
+### WebSocket MCP
+
+The server also supports MCP over WebSockets. This runs on port 8082 by default and provides a single `/ws` endpoint for communication.
+
+- **Making a tool call:**
+  You can use a tool like `websocat` to interact with the WebSocket server.
+  ```bash
+  # Install websocat: https://github.com/vi/websocat
+  ./scripts/test_websocket.sh
+  ```
+  This script sends a `tools/call` request for `generate_uuid` and prints the response.

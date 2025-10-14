@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 )
@@ -19,6 +20,35 @@ func NewJSONRPCProcessor(toolService *ToolService, logger *slog.Logger) *JSONRPC
 	}
 }
 
+// Process takes a raw JSON-RPC request and returns the appropriate response.
+func (p *JSONRPCProcessor) Process(ctx context.Context, request map[string]interface{}) *JSONRPCResponse {
+	method, ok := request["method"].(string)
+	if !ok {
+		return p.CreateErrorResponse(request["id"], -32600, "Invalid Request: Missing method")
+	}
+
+	id := request["id"]
+	params, _ := request["params"].(map[string]interface{})
+
+	switch method {
+	case "initialize":
+		return p.HandleInitialize(id)
+	case "initialized":
+		p.logger.Info("Client initialized notification received")
+		return nil
+	case "tools/list":
+		return p.HandleToolsList(id)
+	case "tools/call":
+		return p.HandleToolsCall(params, id)
+	default:
+		if id == nil {
+			p.logger.Warn("Ignoring notification for unknown method", "method", method)
+			return nil
+		}
+		return p.CreateErrorResponse(id, -32601, fmt.Sprintf("Method not found: %s", method))
+	}
+}
+
 // --- Response Structs ---
 
 type InitializeResult struct {
@@ -34,9 +64,9 @@ type ToolDefinition struct {
 }
 
 type JSONRPCResponse struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      interface{} `json:"id"`
-	Result  interface{} `json:"result,omitempty"`
+	JSONRPC string       `json:"jsonrpc"`
+	ID      interface{}  `json:"id"`
+	Result  interface{}  `json:"result,omitempty"`
 	Error   *ErrorObject `json:"error,omitempty"`
 }
 
@@ -91,6 +121,8 @@ func (p *JSONRPCProcessor) HandleToolsCall(params map[string]interface{}, id int
 		p.logger.Error("Error executing tool", "tool", name, "error", err)
 		return p.CreateErrorResponse(id, -32000, fmt.Sprintf("Tool execution error: %s", err.Error()))
 	}
+
+	p.logger.Info("Tool call completed", "tool", name, "result", result)
 
 	return &JSONRPCResponse{
 		JSONRPC: "2.0",

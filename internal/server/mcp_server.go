@@ -61,7 +61,7 @@ func (s *MCPServer) Start(ctx context.Context) error {
 				return fmt.Errorf("failed to decode message: %w", err)
 			}
 
-			if err := s.handleMessage(message); err != nil {
+			if err := s.handleMessage(ctx, message); err != nil {
 				s.logger.Error("Failed to handle message", "error", err)
 				return fmt.Errorf("failed to handle message: %w", err)
 			}
@@ -70,44 +70,10 @@ func (s *MCPServer) Start(ctx context.Context) error {
 }
 
 // handleMessage processes incoming MCP messages
-func (s *MCPServer) handleMessage(message map[string]interface{}) error {
-	method, ok := message["method"].(string)
-	if !ok {
-		errText := "invalid message: missing method"
-		s.logger.Error("Failed to handle message", "error", errText)
-		// Try to get ID to send a proper error response
-		id, hasId := message["id"]
-		if hasId {
-			return s.sendResponse(s.processor.CreateErrorResponse(id, -32600, "Invalid Request"))
-		}
-		return fmt.Errorf("%s", errText)
-	}
-
-	id, hasId := message["id"]
-	var response *JSONRPCResponse
-
-	switch method {
-	case "initialized":
-		// Notification, no response needed
-		s.logger.Info("Client initialized")
+func (s *MCPServer) handleMessage(ctx context.Context, message map[string]interface{}) error {
+	response := s.processor.Process(ctx, message)
+	if response == nil {
 		return nil
-	case "tools/list":
-		response = s.processor.HandleToolsList(id)
-	case "tools/call":
-		params, ok := message["params"].(map[string]interface{})
-		if !ok {
-			response = s.processor.CreateErrorResponse(id, -32602, "Invalid params")
-		} else {
-			response = s.processor.HandleToolsCall(params, id)
-		}
-	default:
-		if hasId {
-			response = s.processor.CreateErrorResponse(id, -32601, "Method not found")
-		} else {
-			// Unknown notification, ignore
-			s.logger.Warn("Ignoring unknown notification", "method", method)
-			return nil
-		}
 	}
 
 	return s.sendResponse(response)

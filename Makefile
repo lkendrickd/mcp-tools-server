@@ -51,8 +51,13 @@ $(BINARY_PATH): $(GO_FILES)
 
 # Run the combined MCP and HTTP server (default)
 run: build
-	@echo "Starting server from $(BUILD_DIR)..."
-	$(BINARY_PATH)
+	@echo "Starting all servers from $(BUILD_DIR)..."
+	$(BINARY_PATH) --all
+
+# Run all servers explicitly
+run-all: build
+	@echo "Starting all servers from $(BUILD_DIR)..."
+	$(BINARY_PATH) --all
 
 # Run the HTTP-only server for testing
 run-http: build
@@ -68,6 +73,11 @@ run-mcp: build
 run-streamable: build
 	@echo "Starting Streamable HTTP MCP server from $(BUILD_DIR)..."
 	$(BINARY_PATH) --streamable
+
+# Run only the WebSocket server
+run-websocket: build
+	@echo "Starting WebSocket server from $(BUILD_DIR)..."
+	$(BINARY_PATH) --websocket
 
 # Test the streamable HTTP MCP server
 test-streamable: build
@@ -157,6 +167,7 @@ help:
 	@echo "  run-http       Run the HTTP-only server"
 	@echo "  run-mcp        Run the MCP-only server"
 	@echo "  run-streamable Run the Streamable HTTP MCP server"
+	@echo "  run-websocket  Run the WebSocket-only server"
 	@echo "  test-streamable Test the Streamable HTTP MCP server (Go client)"
 	@echo "  test-stream      Test the Streamable HTTP MCP server (shell script)"
 	@echo "  test           Run all tests"
