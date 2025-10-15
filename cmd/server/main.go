@@ -94,7 +94,7 @@ func main() {
 	var webSocketServer *server.WebSocketServer
 
 	if runMCP {
-		mcpServer = server.NewMCPServer(toolService, logger)
+		mcpServer = server.NewMCPServer(cfg, toolService, logger)
 		logger.Info("Stdio MCP server enabled")
 	}
 	if runHTTP {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"mcp-tools-server/internal/config"
 	"mcp-tools-server/pkg/tools"
 )
 
@@ -16,7 +17,8 @@ func TestNewMCPServer(t *testing.T) {
 		t.Fatalf("Failed to create tool service: %v", err)
 	}
 
-	mcpServer := NewMCPServer(toolService, logger)
+	cfg := config.NewServerConfig()
+	mcpServer := NewMCPServer(cfg, toolService, logger)
 
 	if mcpServer == nil {
 		t.Fatal("NewMCPServer returned nil")
@@ -26,7 +28,7 @@ func TestNewMCPServer(t *testing.T) {
 		t.Error("MCP server does not have correct logger reference")
 	}
 
-	if mcpServer.processor == nil {
-		t.Error("MCP server did not initialize the JSONRPCProcessor")
+	if mcpServer.srv == nil {
+		t.Error("MCP server did not initialize the SDK server")
 	}
 }

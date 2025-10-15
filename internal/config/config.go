@@ -15,6 +15,9 @@ type ServerConfig struct {
 	ShutdownTimeout    int      // Timeout for graceful shutdown (seconds)
 	EnableOriginCheck  bool     // Whether to enforce origin check for streamable server
 	AllowedOrigins     []string // Comma-separated list of allowed origins
+	// KeepAlive settings (seconds) for streamable and stdio MCP servers.
+	StreamableKeepAliveSeconds int
+	StdioKeepAliveSeconds      int
 }
 
 // getEnvInt reads an int from the environment or returns the default
@@ -56,6 +59,8 @@ func NewServerConfig() *ServerConfig {
 		ShutdownTimeout:    getEnvInt("SHUTDOWN_TIMEOUT", 30),
 		EnableOriginCheck:  getEnvBool("ENABLE_ORIGIN_CHECK", false),
 		AllowedOrigins:     getEnvStringSlice("ALLOWED_ORIGINS", []string{"*"}),
+		StreamableKeepAliveSeconds: getEnvInt("STREAMABLE_KEEPALIVE_SECONDS", 60),
+		StdioKeepAliveSeconds:      getEnvInt("STDIO_KEEPALIVE_SECONDS", 60),
 	}
 }
 

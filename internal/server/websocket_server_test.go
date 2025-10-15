@@ -52,7 +52,7 @@ func TestWebSocketServer_E2E(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to dial WebSocket server: %v", err)
 	}
-	defer conn.Close(websocket.StatusNormalClosure, "")
+	defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
 
 	// 1. Send "initialize" request
 	initRequest := map[string]interface{}{

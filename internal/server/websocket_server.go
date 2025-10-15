@@ -62,7 +62,11 @@ func (s *WebSocketServer) handleWebSocket(w http.ResponseWriter, r *http.Request
 		log.Printf("Failed to upgrade to WebSocket: %v", err)
 		return
 	}
-	defer conn.Close(websocket.StatusInternalError, "internal server error")
+	defer func() {
+		if err := conn.Close(websocket.StatusInternalError, "internal server error"); err != nil {
+			log.Printf("error closing websocket connection: %v", err)
+		}
+	}()
 
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
 	defer cancel()

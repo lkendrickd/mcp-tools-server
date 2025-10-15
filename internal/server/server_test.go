@@ -15,7 +15,7 @@ func TestNewServer(t *testing.T) {
 	cfg := config.NewServerConfig()
 	registry := tools.NewToolRegistry()
 	toolService, _ := NewToolService(registry, logger)
-	mcpServer := NewMCPServer(toolService, logger)
+	mcpServer := NewMCPServer(cfg, toolService, logger)
 	httpServer := NewHTTPServer(toolService, cfg.HTTPPort, logger)
 
 	server := NewServer(cfg, mcpServer, httpServer, nil, nil)
@@ -45,7 +45,7 @@ func TestServer_shutdown(t *testing.T) {
 	}
 	registry := tools.NewToolRegistry()
 	toolService, _ := NewToolService(registry, logger)
-	mcpServer := NewMCPServer(toolService, logger)
+	mcpServer := NewMCPServer(cfg, toolService, logger)
 	httpServer := NewHTTPServer(toolService, cfg.HTTPPort, logger)
 
 	server := NewServer(cfg, mcpServer, httpServer, nil, nil)
