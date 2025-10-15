@@ -44,27 +44,13 @@ func NewMCPServer(cfg *config.ServerConfig, toolService *ToolService, logger *sl
 	srv := mcp.NewServer(impl, opts)
 
 	// Register tools on the SDK server
-	for _, t := range toolService.GetTools() {
-		tool := t
-		mcp.AddTool(srv, &mcp.Tool{Name: tool.Name(), Description: tool.Description()}, func(ctx context.Context, req *mcp.CallToolRequest, in any) (*mcp.CallToolResult, any, error) {
-			conv := make(map[string]interface{})
-			if m, ok := in.(map[string]any); ok {
-				for k, v := range m {
-					conv[k] = v
-				}
-			} else if m2, ok := in.(map[string]interface{}); ok {
-				conv = m2
-			}
-			out, err := tool.Execute(conv)
-			if err != nil {
-				return nil, nil, err
-			}
-			return &mcp.CallToolResult{}, out, nil
-		})
-	}
+	toolService.RegisterTool(srv)
 
 	return &MCPServer{logger: logger, srv: srv}
 }
+
+// Server returns the underlying SDK server instance.
+func (s *MCPServer) Server() *mcp.Server { return s.srv }
 
 // Start launches the SDK server on the standard StdioTransport. Run blocks until
 // the transport session ends or ctx is cancelled.

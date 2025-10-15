@@ -76,16 +76,16 @@ func TestStreamableHTTPServer_FullFlow(t *testing.T) {
 			t.Fatalf("Failed to create request: %v", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
-        // The SDK StreamableHTTPHandler expects the Accept header to include both
-        // application/json and text/event-stream for POST requests that initiate
-        // or interact with a streamable session.
-        req.Header.Set("Accept", "application/json, text/event-stream")
+		// The SDK StreamableHTTPHandler expects the Accept header to include both
+		// application/json and text/event-stream for POST requests that initiate
+		// or interact with a streamable session.
+		req.Header.Set("Accept", "application/json, text/event-stream")
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
-	defer func() { _ = resp.Body.Close() }()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d", resp.StatusCode)
@@ -112,7 +112,7 @@ func TestStreamableHTTPServer_FullFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send initialize request: %v", err)
 		}
-	defer func() { _ = initResp.Body.Close() }()
+		defer func() { _ = initResp.Body.Close() }()
 		sessionID := initResp.Header.Get("Mcp-Session-Id")
 		if sessionID == "" {
 			t.Fatalf("Expected Mcp-Session-Id header in initialize response")
@@ -134,7 +134,7 @@ func TestStreamableHTTPServer_FullFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send SSE request: %v", err)
 		}
-	defer func() { _ = resp.Body.Close() }()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("Expected status 200 for SSE, got %d", resp.StatusCode)

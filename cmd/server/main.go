@@ -106,9 +106,14 @@ func main() {
 		logger.Info("Streamable HTTP MCP server enabled", "port", cfg.StreamableHTTPPort, "origin-check", cfg.EnableOriginCheck)
 	}
 	if runWebSocket {
-		jsonRPCProcessor := server.NewJSONRPCProcessor(toolService, logger)
-		webSocketServer = server.NewWebSocketServer(cfg, jsonRPCProcessor)
-		logger.Info("WebSocket server enabled", "port", cfg.WebSocketPort)
+		// Ensure we have an MCP SDK server to back the WebSocket server. If the
+		// stdio MCP server wasn't enabled explicitly, create an SDK server here
+		// so the WebSocket path is always handled by the SDK.
+		if mcpServer == nil {
+			mcpServer = server.NewMCPServer(cfg, toolService, logger)
+		}
+		webSocketServer = server.NewWebSocketServer(cfg, mcpServer.Server())
+		logger.Info("WebSocket server enabled (SDK-backed)", "port", cfg.WebSocketPort)
 	}
 
 	// --- Server Start ---

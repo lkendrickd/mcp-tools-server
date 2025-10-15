@@ -53,12 +53,12 @@ func getEnvStringSlice(key string, defaultVal []string) []string {
 // NewServerConfig creates a new server configuration using environment variables or defaults
 func NewServerConfig() *ServerConfig {
 	return &ServerConfig{
-		HTTPPort:           getEnvInt("HTTP_PORT", 8080),
-		StreamableHTTPPort: getEnvInt("STREAMABLE_HTTP_PORT", 8081),
-		WebSocketPort:      getEnvInt("WEBSOCKET_PORT", 8082),
-		ShutdownTimeout:    getEnvInt("SHUTDOWN_TIMEOUT", 30),
-		EnableOriginCheck:  getEnvBool("ENABLE_ORIGIN_CHECK", false),
-		AllowedOrigins:     getEnvStringSlice("ALLOWED_ORIGINS", []string{"*"}),
+		HTTPPort:                   getEnvInt("HTTP_PORT", 8080),
+		StreamableHTTPPort:         getEnvInt("STREAMABLE_HTTP_PORT", 8081),
+		WebSocketPort:              getEnvInt("WEBSOCKET_PORT", 8082),
+		ShutdownTimeout:            getEnvInt("SHUTDOWN_TIMEOUT", 30),
+		EnableOriginCheck:          getEnvBool("ENABLE_ORIGIN_CHECK", false),
+		AllowedOrigins:             getEnvStringSlice("ALLOWED_ORIGINS", []string{"*"}),
 		StreamableKeepAliveSeconds: getEnvInt("STREAMABLE_KEEPALIVE_SECONDS", 60),
 		StdioKeepAliveSeconds:      getEnvInt("STDIO_KEEPALIVE_SECONDS", 60),
 	}

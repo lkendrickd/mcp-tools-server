@@ -33,11 +33,9 @@ func TestWebSocketServer_E2E(t *testing.T) {
 		t.Fatalf("Failed to create tool service: %v", err)
 	}
 
-	// Create the JSON-RPC processor
-	processor := NewJSONRPCProcessor(toolService, logger)
-
-	// Create and start the WebSocket server in a goroutine
-	wsServer := NewWebSocketServer(cfg, processor)
+	// Create an MCP SDK server and use it for WebSocket handling
+	mcpSrv := NewMCPServer(cfg, toolService, logger)
+	wsServer := NewWebSocketServer(cfg, mcpSrv.Server())
 	testServer := httptest.NewServer(http.HandlerFunc(wsServer.handleWebSocket))
 	defer testServer.Close()
 
@@ -100,12 +98,21 @@ func TestWebSocketServer_E2E(t *testing.T) {
 	}
 	result, ok := callResp["result"].(map[string]interface{})
 	if !ok {
-		t.Fatalf("Expected result to be a map, got %T", callResp["result"])
+		t.Fatalf("Expected result to be a map, got %T; full response: %#v", callResp["result"], callResp)
 	}
-	if _, ok := result["uuid"]; !ok {
-		t.Error("Expected 'uuid' in tools/call response")
+	var uuidVal interface{}
+	if v, ok := result["uuid"]; ok {
+		uuidVal = v
+	} else if sc, ok := result["structuredContent"].(map[string]interface{}); ok {
+		if v2, ok2 := sc["uuid"]; ok2 {
+			uuidVal = v2
+		}
 	}
-	t.Logf("Received UUID: %s", result["uuid"])
+
+	if uuidVal == nil {
+		t.Fatalf("Expected 'uuid' in tools/call response (either top-level or structuredContent), full result: %#v", result)
+	}
+	t.Logf("Received UUID: %v", uuidVal)
 }
 
 // writeRequest is a helper to send a JSON request to the WebSocket connection.

@@ -110,238 +110,140 @@ The server now supports the official **Streamable HTTP** transport from the MCP 
       }
     }'
   ```
-  The server will return a JSON-RPC response immediately.
+  <img src="images/logo.png" alt="MCP Tools Server Logo" width="50%">
 
-- **Listening for server-sent events (GET):**
-  This opens a persistent Server-Sent Events (SSE) stream.
+  # MCP Tools Server
+
+  A Go-based Model Context Protocol (MCP) server that exposes a small collection of tools over multiple transports. The server uses the official MCP Go SDK (github.com/modelcontextprotocol/go-sdk v1.0.0) to manage sessions, transports, and tool registration.
+
+  ## Key characteristics
+
+  - SDK-backed: The server uses an SDK `mcp.Server` as the central session and tool dispatcher. Transports (stdio, Streamable HTTP, WebSocket) connect into that server.
+  - Multiple transports: stdio (MCP), Streamable HTTP (`/mcp`), HTTP REST, and WebSocket (`/ws`).
+  - Tool adapter: tools live in `pkg/tools` and are registered with the SDK via `internal/server.ToolService`. Tool outputs are normalized to a consistent JSON object shape.
+  - Extensible: add new tools by implementing the `Tool` interface and registering a builder.
+  - Observability: basic Prometheus metrics and HTTP health endpoints are provided.
+
+  ## Installation
+
+  ### Prerequisites
+
+  - Go 1.24+
+  - GNU Make (optional but used by the included Makefile)
+
+  ### Quick start
+
   ```bash
-  curl -N http://localhost:8081/mcp
+  git clone <repository-url>
+  cd mcp-tools-server
+  go mod download
+  make build
   ```
-  The server can now push messages to the client over this connection.
 
-### HTTP API
+  ## Running the server
 
-The server exposes a simple REST API on port 8080 for basic tool interaction. For testing, run in HTTP-only mode:
+  The binary supports flags to enable or disable transports. The `Makefile` contains convenience targets.
 
-```bash
-./build/server --http &
-curl http://localhost:8080/api/uuid
-```
+  - `make run` or `make run-all` — run all enabled servers
+  - `make run-http` — run the REST API only
+  - `make run-mcp` — run the stdio (MCP) server only
+  - `make run-streamable` — run the Streamable HTTP MCP server only
+  - `make run-websocket` — run the WebSocket server only
 
-Response:
-```json
-{"uuid": "550e8400-e29b-41d4-a716-446655440000"}
-```
+  By default the binary listens on the following ports (configurable):
 
-## API Documentation
+  - REST HTTP: 8080
+  - Streamable HTTP MCP: 8081 (`/mcp`)
+  - WebSocket MCP: 8082 (`/ws`)
 
-### Endpoints
+  Example — run the Streamable HTTP server and call a tool:
 
-#### GET /api/uuid
-
-Generates and returns a random UUID v4 string.
-
-**Request:**
-```bash
-curl http://localhost:8080/api/uuid
-```
-
-**Response:**
-```json
-{
-  "uuid": "string"
-}
-```
-
-**Status Codes:**
-- `200 OK`: Success
-- `405 Method Not Allowed`: Only GET requests are allowed
-- `500 Internal Server Error`: UUID generation failed
-
-#### GET /api/list
-
-Returns a JSON object mapping tool names to their descriptions.
-
-**Request:**
-```bash
-curl http://localhost:8080/api/list
-```
-
-**Response:**
-```json
-{
-  "generate_uuid": "Generates a random UUID v4 string"
-}
-```
-
-**Status Codes:**
-- `200 OK`: Success
-- `405 Method Not Allowed`: Only GET requests are allowed
-
-#### GET /health
-
-**Response:**
-```json
-{
-  "status": "healthy"
-}
-```
-
-**Status Codes:**
-- `200 OK`: Server is healthy
-- `500 Internal Server Error`: Server is unhealthy
-
-#### GET /
-Returns server information including version and build time.
-**Response:**
-```json
-{
-  "buildTime": "2025-09-19T23:26:33Z",
-  "gitCommit": "059b144",
-  "message": "Welcome to Go MCP Tools Server!",
-  "service": "MCP Tools Server",
-  "version": "1.0.2"
-}
-```
-
-**Status Codes:**
-- `200 OK`: Success
-- `500 Internal Server Error`: Unable to retrieve version info
-
-#### GET /metrics
-Exposes Prometheus metrics for monitoring.
-**Request:**
-```bash
-curl http://localhost:8080/api/metrics
-``` 
-
-**Response:**
-Prometheus-formatted metrics data.
-**Status Codes:**
-- `200 OK`: Success
-- `500 Internal Server Error`: Unable to retrieve metrics
-
-
-## MCP Protocol`
-
-### Available Tools
-
-#### generate_uuid
-
-Generates a random UUID v4 string.
-
-**Input Schema:**
-```json
-{
-  "type": "object",
-  "properties": {}
-}
-```
-
-**Output:**
-```json
-{
-  "uuid": "uuid-string"
-}
-```
-
-### MCP Communication
-
-The server implements the Model Context Protocol over stdio and http. It supports:
-- `initialize`: Server initialization
-- `tools/list`: List available tools
-- `tools/call`: Execute tool calls
-
-## Development
-
-
-### Project Structure
-
-```
-├── cmd/server/           # Application entry point (main.go)
-├── internal/             # Private application code
-│   ├── config/           # Configuration management
-│   └── server/           # MCP and HTTP server implementations
-├── pkg/tools/            # Public library code (UUID generation, etc.)
-├── configs/              # Configuration files and templates
-├── build/                # Build tools and artifacts
-├── docs/                 # Project documentation
-├── go.mod                # Go module definition
-├── go.sum                # Go dependencies
-├── Makefile              # Build automation
-└── README.md             # This file
-```
-
-### Running Tests
-
-```bash
-make test
-```
-
-Test coverage includes:
-- Unit tests for individual components
-
-### Building from Source
-
-```bash
-make build
-```
-
-This creates a `server` binary in the project root.
-
-## Configuration
-
-
-Configuration is set in `internal/config/config.go` and can be controlled via environment variables or command-line flags.
-
-### Environment Variables
-- `HTTP_PORT`: Port for the HTTP REST server (default: `8080`).
-- `STREAMABLE_HTTP_PORT`: Port for the Streamable HTTP MCP server (default: `8081`).
-- `WEBSOCKET_PORT`: Port for the WebSocket server (default: `8082`).
-- `ENABLE_ORIGIN_CHECK`: Set to `true` to enable Origin header validation on the streamable server (default: `false`).
-- `ALLOWED_ORIGINS`: A comma-separated list of hostnames allowed by the origin check (e.g., `localhost,example.com`). Default is `*` (allow all).
-- `SHUTDOWN_TIMEOUT`: Graceful shutdown timeout in seconds (default: `30`).
-
-### Command-Line Flags
-Flags can be used to override environment variable settings.
-- `--http-port <port>`
-- `--streamable-port <port>`
-- `--websocket-port <port>`
-- `--enable-origin-check`
-- `--allowed-origins <origins>`
-
-## Contributing
-
-Contributions and improvements are welcome! Please follow these steps:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Commit your changes (`git commit -m 'Add some feature'`)
-4. Push to the branch (`git push origin feature/your-feature`)
-5. Open a pull request
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Adding New Tools
-
-To add a new tool to the MCP Tools Server:
-
-1. **Create tool implementation** in `pkg/tools/` - Implement the `Tool` interface with `Name()`, `Description()`, and `Execute()` methods
-2. **Register tool builder** in `pkg/tools/tool.go` - Add to `registerBuiltinTools()` method with appropriate configuration handling
-3. **Add HTTP route (optional)** in `internal/server/http_server.go` - Add endpoint in `NewHTTPServer()` if HTTP access is desired
-4. **Test the tool** - Use MCP clients or HTTP API to verify functionality
-
-See the `DEVELOPER_GUIDE.md` in `docs/` for detailed implementation examples.
-
-### WebSocket MCP
-
-The server also supports MCP over WebSockets. This runs on port 8082 by default and provides a single `/ws` endpoint for communication.
-
-- **Making a tool call:**
-  You can use a tool like `websocat` to interact with the WebSocket server.
   ```bash
-  # Install websocat: https://github.com/vi/websocat
-  ./scripts/test_websocket.sh
+  ./build/server --streamable
+
+  curl -X POST http://localhost:8081/mcp \
+    -H "Content-Type: application/json" \
+    -d '{
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "tools/call",
+      "params": {"name": "generate_uuid"}
+    }'
   ```
-  This script sends a `tools/call` request for `generate_uuid` and prints the response.
+
+  Example — connect with a WebSocket client:
+
+  ```bash
+  # connect to the WebSocket MCP endpoint
+  websocat ws://localhost:8082/ws
+  ```
+
+  ## HTTP API
+
+  The server exposes a small REST surface used for testing and convenience:
+
+  - `GET /api/uuid` — returns a generated UUID (example tool)
+  - `GET /api/list` — lists available tools and descriptions
+  - `GET /health` — health check
+  - `GET /metrics` — Prometheus metrics
+
+  Example:
+
+  ```bash
+  curl http://localhost:8080/api/uuid
+  ```
+
+  Response:
+
+  ```json
+  {"uuid":"550e8400-e29b-41d4-a716-446655440000"}
+  ```
+
+  ## Tools
+
+  Tools are implemented under `pkg/tools`. Each tool implements the `Tool` interface (Name, Description, Execute). The repository includes a `generate_uuid` tool as an example.
+
+  Tool outputs are normalized by the server into a consistent `map[string]interface{}` JSON object shape. This makes consumer parsing simpler and the server resilient to differences in how individual tools return their results.
+
+  ## Development
+
+  Project layout (relevant folders):
+
+  ```
+  ├── cmd/server/           # main entry point
+  ├── internal/             # server implementation, configuration
+  │   ├── config/
+  │   └── server/
+  ├── pkg/tools/            # tool implementations and builders
+  ├── docs/                 # design and developer guides
+  ├── build/                # built artifacts
+  ```
+
+  ### Tests
+
+  Run unit tests and package checks with:
+
+  ```bash
+  make test
+  go test ./...
+  ```
+
+  ### Linting
+
+  Run the repository linter (this project expects `golangci-lint` to be available):
+
+  ```bash
+  /home/dennis/go/bin/golangci-lint run ./...
+  ```
+
+  ## Configuration
+
+  Configuration values are defined in `internal/config` and are exposed via environment variables and flags. Common settings include HTTP ports and graceful shutdown timeouts.
+
+  ## Contributing
+
+  Contributions are welcome. Fork, add a feature branch, run tests and linter, and open a pull request.
+
+  ## License
+
+  This project is licensed under the MIT License. See the `LICENSE` file for details.
